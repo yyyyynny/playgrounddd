@@ -1,7 +1,12 @@
-# Dependabot — GitHub Actions 주간 점검. package.json 이 생기면 npm 항목을 추가한다.
+# Dependabot — GitHub Actions · npm 주간 점검 (루트 package.json 은 현재 의존성 0개)
 version: 2
 updates:
   - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+  - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
