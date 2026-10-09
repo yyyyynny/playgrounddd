@@ -1,0 +1,80 @@
+# playgrounddd CI — 실험 폴더 전체에 대한 정적 검증
+# - 실험마다 구조가 달라서 공통으로 가능한 검사만 하고, package.json 에 해당 스크립트가 있을 때만 npm 검사를 돈다.
+# - job 이름(HTML / JS 기본 검증, 기능 동작 테스트 (jsdom))은 main 규칙세트의 필수 점검 이름과 같아야 한다.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "claude/**"
+  workflow_dispatch:
+
+# 같은 브랜치에 새 커밋이 오면 이전 실행 취소
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# 공급망 보안: 워크플로 토큰을 읽기 전용으로 최소화
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: HTML / JS 기본 검증
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 — 커밋 고정
+
+      - name: Node.js 설치
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 — 커밋 고정
+        with:
+          node-version: "24"
+
+      - name: 병합 충돌 마커 검사
+        run: |
+          if grep -rIlE '^(<<<<<<< |>>>>>>> )' --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.claude .; then
+            echo "::error::병합 충돌 마커가 남아 있습니다. 위 파일에서 제거하세요."
+            exit 1
+          fi
+          echo "충돌 마커 없음"
+
+      - name: JavaScript 문법 검증 (모든 *.js · *.mjs · *.cjs, node --check)
+        run: |
+          count=0; fail=0
+          while IFS= read -r -d '' f; do
+            count=$((count+1))
+            if ! node --check "$f"; then echo "::error file=$f::문법 오류"; fail=1; fi
+          done < <(find . -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) -not -path './.git/*' -not -path '*/node_modules/*' -not -path './.claude/*' -print0)
+          echo "검사한 JS 파일: ${count}개"
+          exit $fail
+
+      - name: HTML 구조 검증 (package.json 에 check:html 이 있을 때만)
+        run: |
+          if [ -f package.json ] && node -e "process.exit(require('./package.json').scripts?.['check:html']?0:1)"; then
+            npm ci --ignore-scripts && npm run check:html
+          else
+            echo "check:html 없음 — 건너뜀"
+          fi
+
+  functional-tests:
+    name: 기능 동작 테스트 (jsdom)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 — 커밋 고정
+
+      - name: Node.js 설치
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 — 커밋 고정
+        with:
+          node-version: "24"
+
+      - name: 테스트 (package.json 에 test 가 있을 때만)
+        run: |
+          if [ -f package.json ] && node -e "process.exit(require('./package.json').scripts?.test?0:1)"; then
+            npm ci --ignore-scripts && npm test
+          else
+            echo "npm test 없음 — 건너뜀"
+          fi
