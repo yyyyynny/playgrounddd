@@ -421,8 +421,19 @@ const focusSheet = $('focusSheet');
 let draft = new Set();
 
 function updateFocusLabel() {
-  $('focusLabel').textContent = selection.size < SONGS.length ? `집중 학습 · ${selection.size}곡` : '집중 학습';
+  const on = selection.size < SONGS.length;
+  $('focusLabel').textContent = on ? `집중 학습 · ${selection.size}곡` : '집중 학습';
+  $('openFocus').classList.toggle('is-on', on);
+  $('clearFocus').hidden = !on;
 }
+// 집중 학습 끄기 → 전체 곡으로 처음부터
+$('clearFocus').addEventListener('click', () => {
+  selection = new Set(ALL_IDS);
+  store.set(KEY_SELECTION, ALL_IDS);
+  updateFocusLabel();
+  newRound();
+  $('openFocus').focus({ preventScroll: true });
+});
 function updateFocusCount() {
   $('focusCount').textContent = `${draft.size} / ${SONGS.length}곡`;
   $('focusStart').disabled = draft.size === 0;

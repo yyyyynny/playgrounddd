@@ -1,8 +1,9 @@
 // 유튜브 오디오 재생 — 공식 IFrame Player API, 화면 밖에 숨긴 플레이어 1개를 퀴즈·목록이 공유한다
 // 영상·썸네일·제목은 화면에 절대 보이지 않는다 (정답 유출 방지). display:none 은 재생이 멈출 수 있어 쓰지 않는다
 //
-// 소리 끊김 방지: 재생·탐색 직후에는 음소거 상태로 두었다가 목표 시각에 도착하면 서서히 키운다
-// (시작 초가 지정된 곡은 0초 소리가 잠깐 났다가 건너뛰며 '빡' 하는 소리가 났다). 일시정지도 서서히 줄인 뒤 멈춘다
+// 소리 끊김 방지: 재생·탐색 직후에는 음소거해 두고, 실제로 목표 시각 근처에서 재생이 이어지는 것을 확인한 뒤 서서히 키운다.
+// 유튜브는 준비(cued) 상태에서 이미 시작 초를 보고하므로 '보고 시각'만 믿으면 너무 일찍 소리가 열려 '빡' 소리가 났다.
+// 일시정지도 서서히 줄인 뒤 멈춘다
 
 const ERRORS = {
   2: '영상 주소가 올바르지 않습니다',
@@ -11,7 +12,12 @@ const ERRORS = {
   101: '유튜브가 이 영상의 재생을 막았습니다. 재생 버튼으로 다시 시도해 보세요',
   150: '유튜브가 이 영상의 재생을 막았습니다. 재생 버튼으로 다시 시도해 보세요'
 };
-const FADE_IN = 450;   // ms
+const FADE_IN = 600;   // ms
+const SETTLE = 280;    // 재생 상태가 된 뒤 최소 대기(ms)
+const GIVE_UP = 750;   // 시각이 안 바뀌어도 이만큼 재생되면 연다(ms)
+// 시작 초가 있는 곡은 이만큼 앞에서 굴려 둔다 — 소리가 열리기까지의 묵음이 지정 시작점 근처에서 끝나게
+const PRE_ROLL = 0.8;  // 초
+const startOf = (s) => (s.start > PRE_ROLL ? s.start - PRE_ROLL : 0);
 const FADE_OUT = 160;  // ms
 
 let yt = null;          // YT.Player
@@ -24,8 +30,8 @@ let gate = null;        // 이 시각에 도착하면 소리를 키운다 { at, 
 let vol = 100;
 let fadeRaf = 0;
 let gateRaf = 0;
-let anchor = { raw: -1, at: 0 }; // 유튜브가 알려 준 마지막 시각과 그때의 시계
-let smooth = 0;
+// 화면용 시계: 유튜브 시각은 띄엄띄엄·늦게 온다. 자체 시계로 흐르게 하고, 새 값이 오면 오차의 일부만 반영한다
+let clock = { t: 0, at: 0, raw: -1, guard: 0 };
 const listeners = new Set();
 
 function emit() {
@@ -61,30 +67,44 @@ function fade(to, ms, done) {
   fadeRaf = requestAnimationFrame(step);
 }
 // 음소거하고 목표 시각을 기다린다
-function mute(at) {
+// strict: 위치가 건너뛸 수 있는 경우(새 곡 · 탐색) — 시각이 실제로 흐른 걸 확인할 때까지 기다린다
+function mute(at, strict = true) {
   cancelAnimationFrame(fadeRaf);
   fadeRaf = 0;
   pausing = false;
+  yt.mute();
   setVol(0);
-  gate = { at, since: performance.now() };
+  gate = { at, strict, playingSince: 0, firstRaw: null };
   if (!gateRaf) gateRaf = requestAnimationFrame(watchGate);
 }
 function watchGate() {
   gateRaf = 0;
   if (!gate) return;
-  const t = yt.getCurrentTime() || 0;
-  const arrived = ytState === 1 && (t >= gate.at - 0.25 || performance.now() - gate.since > 4000);
-  if (arrived) {
-    gate = null;
-    fade(100, FADE_IN);
-    return;
+  const now = performance.now();
+  if (ytState !== 1) {
+    gate.playingSince = 0;
+    gate.firstRaw = null;
+  } else {
+    const t = yt.getCurrentTime() || 0;
+    if (!gate.playingSince) gate.playingSince = now;
+    const near = t >= gate.at - 0.3;
+    if (near && gate.firstRaw === null) gate.firstRaw = t;
+    const played = now - gate.playingSince;
+    const advanced = near && gate.firstRaw !== null && t > gate.firstRaw; // 시각이 실제로 흘렀다
+    if (played >= SETTLE && near && (!gate.strict || advanced || played >= GIVE_UP)) {
+      gate = null;
+      setVol(0);
+      yt.unMute();
+      fade(100, FADE_IN);
+      return;
+    }
   }
   gateRaf = requestAnimationFrame(watchGate);
 }
 
 function resetClock(t) {
-  anchor = { raw: -1, at: 0 };
-  smooth = t;
+  // 탐색 직후 잠깐은 옛 위치 값이 올 수 있어 큰 오차를 무시한다
+  clock = { t, at: performance.now(), raw: yt ? yt.getCurrentTime() || 0 : -1, guard: performance.now() + 1500 };
 }
 
 export function init(hostId) {
@@ -120,8 +140,8 @@ function cue(s) {
   ytState = -1;
   gate = null;
   pausing = false;
-  resetClock(s.start);
-  yt.cueVideoById({ videoId: s.vid, startSeconds: s.start });
+  resetClock(startOf(s));
+  yt.cueVideoById({ videoId: s.vid, startSeconds: startOf(s) });
 }
 
 // 곡 준비 (재생은 하지 않음). 같은 곡이면 그대로 둔다
@@ -144,9 +164,9 @@ export function play(s) {
   song = s;
   error = '';
   ytState = -1;
-  resetClock(s.start);
-  mute(s.start);
-  yt.loadVideoById({ videoId: s.vid, startSeconds: s.start });
+  resetClock(startOf(s));
+  mute(startOf(s));
+  yt.loadVideoById({ videoId: s.vid, startSeconds: startOf(s) });
   emit();
 }
 
@@ -163,8 +183,9 @@ export function toggle() {
     pause();
     return;
   }
-  const t = yt.getCurrentTime() || 0;
-  mute(Math.max(t, song.start));
+  // 처음 재생(준비 상태)은 건너뜀이 생길 수 있어 엄격하게, 일시정지 후 이어 듣기는 바로 연다
+  const first = ytState === 5 || ytState === -1;
+  mute(first ? startOf(song) : Math.max(0, (yt.getCurrentTime() || 0) - 1), first);
   yt.playVideo();
   emit();
 }
@@ -192,25 +213,34 @@ export function seek(sec) {
 
 export function restart() {
   if (!ready || !song || error) return;
-  resetClock(song.start);
-  mute(song.start);
-  yt.seekTo(song.start, true);
+  resetClock(startOf(song));
+  mute(startOf(song));
+  yt.seekTo(startOf(song), true);
   yt.playVideo();
 }
 
-// 유튜브가 알려 주는 시각은 띄엄띄엄(초반엔 1초 간격) 바뀐다. 재생 중에는 마지막 값에서 시계로 이어 그린다
+// 화면에 그릴 재생 시각. 재생 중에는 시계로 흐르고, 유튜브 값이 새로 오면 오차의 20%만 따라간다(되돌아가지 않음)
 export function time() {
   if (!ready || !song?.vid) return { current: 0, duration: 0 };
   const raw = yt.getCurrentTime() || 0;
   const now = performance.now();
-  let t = raw;
-  if (ytState === 1 && !pausing) {
-    if (raw !== anchor.raw) anchor = { raw, at: now };
-    t = anchor.raw + Math.min(1.5, (now - anchor.at) / 1000);
-    if (t < smooth && smooth - t < 0.6) t = smooth; // 살짝 뒤로 튀는 값은 무시
-  } else if (!raw) {
-    t = smooth; // 준비 직후 0 이 오면 시작점 유지
+  const duration = yt.getDuration() || 0;
+  if (!(ytState === 1 && !pausing)) {
+    // 멈춤 · 버퍼링: 시계를 세우고 유튜브 값에 맞춘다(준비 직후 0 이 오면 기존 값 유지)
+    if (raw && now > clock.guard && Math.abs(raw - clock.t) > 1.2) clock.t = raw; // 거친 값으로 살짝 뒤로 튀지 않게
+    clock.at = now;
+    clock.raw = raw;
+    return { current: clock.t, duration };
   }
-  smooth = t;
-  return { current: t, duration: yt.getDuration() || 0 };
+  const dt = Math.min(0.25, (now - clock.at) / 1000); // 탭이 멈췄다 돌아온 경우 대비
+  let t = clock.t + dt;
+  if (raw !== clock.raw) {
+    const err = raw - t;
+    if (Math.abs(err) > 2) { if (now > clock.guard) t = raw; } // 크게 다르면 다른 위치로 간 것
+    else t += err * 0.2;
+    clock.raw = raw;
+  }
+  clock.t = Math.max(t, clock.t + dt * 0.5); // 늦게 온 값 때문에 멈추거나 되돌아가지 않게
+  clock.at = now;
+  return { current: clock.t, duration };
 }

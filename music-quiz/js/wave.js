@@ -61,34 +61,36 @@ export function createWave(el, { onSeek }) {
     const pad = LINE;                     // 양 끝 둥근 꼭지가 잘리지 않게
     const span = w - pad * 2;
     const x = pad + span * shown;
-    const gap = 7;                        // 손잡이와 선 사이 틈
+    // 손잡이와 선 사이 틈. 양 끝에서는 틈을 비례로 줄여 선이 손잡이에서 연속으로 자라나게 한다
+    // (고정 7px 틈이면 긴 곡 초반 몇 초 동안 선이 없다가 갑자기 생겼다)
+    const GAP = 7;
+    const gapL = Math.min(GAP, (x - pad) / 2);
+    const gapR = Math.min(GAP, (w - pad - x) / 2);
 
     ctx.clearRect(0, 0, w, h);
     ctx.lineCap = 'round';
     ctx.lineWidth = LINE;
 
     // 남은 구간: 직선
-    if (x + gap < w - pad) {
-      ctx.strokeStyle = rest;
-      ctx.beginPath();
-      ctx.moveTo(x + gap, mid);
-      ctx.lineTo(w - pad, mid);
-      ctx.stroke();
-    }
+    ctx.strokeStyle = rest;
+    ctx.beginPath();
+    ctx.moveTo(x + gapR, mid);
+    ctx.lineTo(w - pad, mid);
+    ctx.stroke();
 
-    // 재생한 구간: 물결 (손잡이 가까이에서는 진폭을 줄여 매끄럽게 붙인다)
-    const end = x - gap;
-    if (end > pad) {
-      ctx.strokeStyle = played;
-      ctx.beginPath();
-      const a = AMPLITUDE * amp * Math.min(1, (end - pad) / 48); // 재생 구간이 짧을 땐 물결도 작게
-      for (let px = pad; px <= end; px += 1) {
-        const taper = Math.min(1, (end - px) / 14, (px - pad) / 6 + 0.4);
-        const y = mid + a * taper * Math.sin((px / WAVELENGTH) * Math.PI * 2 - phase);
-        if (px === pad) ctx.moveTo(px, y); else ctx.lineTo(px, y);
-      }
-      ctx.stroke();
-    }
+    // 재생한 구간: 물결. 끝점을 소수점 위치 그대로 이어 1px 단위로 끊기지 않게 한다
+    const end = x - gapL;
+    const a = AMPLITUDE * amp * Math.min(1, (end - pad) / 48); // 재생 구간이 짧을 땐 물결도 작게
+    const yAt = (px) => {
+      const taper = Math.min(1, (end - px) / 14, (px - pad) / 6 + 0.4); // 손잡이 쪽은 잦아들게
+      return mid + a * Math.max(0, taper) * Math.sin((px / WAVELENGTH) * Math.PI * 2 - phase);
+    };
+    ctx.strokeStyle = played;
+    ctx.beginPath();
+    ctx.moveTo(pad, yAt(pad));
+    for (let px = pad + 1; px < end; px += 1) ctx.lineTo(px, yAt(px));
+    ctx.lineTo(end, yAt(end));
+    ctx.stroke();
 
     // 손잡이: 세로 알약
     ctx.fillStyle = played;

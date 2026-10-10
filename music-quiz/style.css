@@ -20,7 +20,7 @@
   --shadow-lg: 0 -1px 0 rgb(255 255 255 / .6) inset, 0 -12px 40px rgb(20 24 42 / .12);
   --backdrop: rgb(20 24 42 / .28);
   --sheen: rgb(255 255 255 / .6);
-  --material: rgb(255 255 255 / .78);   /* 반투명 재질(시트 · 상단 바) */
+  --material: rgb(255 255 255 / .9);    /* 반투명 재질(시트 · 상단 바) — 뒤 글자가 비치지 않을 만큼 */
   --material-edge: rgb(255 255 255 / .7);
 
   --font: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
@@ -55,7 +55,7 @@
   --shadow-lg: 0 1px 0 rgb(255 255 255 / .06) inset, 0 -12px 40px rgb(0 0 0 / .45);
   --backdrop: rgb(0 0 0 / .5);
   --sheen: rgb(255 255 255 / .07);
-  --material: rgb(25 29 39 / .8);
+  --material: rgb(25 29 39 / .9);
   --material-edge: rgb(255 255 255 / .06);
   color-scheme: dark;
 }
@@ -136,6 +136,12 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 }
 .pill svg { width: 18px; height: 18px; color: var(--accent); }
 .pill.sm { padding: 6px 12px; font-size: .8rem; }
+/* 집중 학습 켜짐: 강조 + 오른쪽에 붙은 끄기(×) */
+.pill-group { display: inline-flex; }
+.pill.is-on { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.pill.is-on:has(+ .pill-x:not([hidden])) { border-radius: var(--r-pill) 0 0 var(--r-pill); padding-right: 10px; }
+.pill-x { border-radius: 0 var(--r-pill) var(--r-pill) 0; padding: 9px 12px 9px 8px; margin-left: 1px; background: var(--accent-soft); border-color: transparent; }
+.pill-x svg { width: 16px; height: 16px; }
 
 /* 퀴즈 카드 */
 .card {
@@ -277,8 +283,8 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   margin: auto auto 0; padding: 0;
   border: 0; border-radius: var(--r-card) var(--r-card) 0 0;
   background: var(--material); color: var(--ink);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
   box-shadow: var(--shadow-lg);
   display: none; flex-direction: column;
   transform: translateY(0);
