@@ -79,7 +79,7 @@
             <span class="sr-only">작품명</span>
             <input id="inTitle" type="text" placeholder="작품명" enterkeyhint="done" autocapitalize="off" spellcheck="false">
           </label>
-          <button class="submit-btn" id="submitBtn" type="submit" aria-label="제출"><svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
+          <button class="submit-btn" id="submitBtn" type="submit" aria-label="제출"><span class="submit-label" id="nextLabel" aria-hidden="true">다음 문제</span><svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
         </div>
       </form>
 
@@ -96,7 +96,7 @@
 </div>
 
 <dialog class="sheet" id="listSheet" aria-labelledby="listTitle">
-  <div class="sheet-head">
+  <div class="sheet-head" title="끌어 내려 닫기">
     <h2 id="listTitle">음악 감상 목록</h2>
     <button class="icon-btn" type="button" data-close aria-label="닫기"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
   </div>
@@ -104,7 +104,7 @@
 </dialog>
 
 <dialog class="sheet" id="focusSheet" aria-labelledby="focusTitle">
-  <div class="sheet-head">
+  <div class="sheet-head" title="끌어 내려 닫기">
     <h2 id="focusTitle">집중 학습 곡 고르기</h2>
     <button class="icon-btn" type="button" data-close aria-label="닫기"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
   </div>

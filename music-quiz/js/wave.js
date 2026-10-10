@@ -29,6 +29,7 @@ export function createWave(el, { onSeek }) {
   const ctx = canvas.getContext('2d');
 
   let cur = 0, dur = 0;
+  let shown = 0;           // 화면에 그리는 위치(0~1). 목표 위치를 부드럽게 따라간다
   let playing = false;
   let amp = 0;             // 0~1, 재생 여부에 따라 부드럽게 변한다
   let phase = 0;
@@ -46,7 +47,7 @@ export function createWave(el, { onSeek }) {
   });
   ro.observe(el);
 
-  function frac() {
+  function target() {
     if (drag !== null) return drag;
     return dur > 0 ? Math.min(1, cur / dur) : 0;
   }
@@ -59,7 +60,7 @@ export function createWave(el, { onSeek }) {
     const mid = h / 2;
     const pad = LINE;                     // 양 끝 둥근 꼭지가 잘리지 않게
     const span = w - pad * 2;
-    const x = pad + span * frac();
+    const x = pad + span * shown;
     const gap = 7;                        // 손잡이와 선 사이 틈
 
     ctx.clearRect(0, 0, w, h);
@@ -80,7 +81,7 @@ export function createWave(el, { onSeek }) {
     if (end > pad) {
       ctx.strokeStyle = played;
       ctx.beginPath();
-      const a = AMPLITUDE * amp;
+      const a = AMPLITUDE * amp * Math.min(1, (end - pad) / 48); // 재생 구간이 짧을 땐 물결도 작게
       for (let px = pad; px <= end; px += 1) {
         const taper = Math.min(1, (end - px) / 14, (px - pad) / 6 + 0.4);
         const y = mid + a * taper * Math.sin((px / WAVELENGTH) * Math.PI * 2 - phase);
@@ -100,12 +101,16 @@ export function createWave(el, { onSeek }) {
   function tick(t) {
     const dt = last ? Math.min(0.05, (t - last) / 1000) : 0;
     last = t;
-    const target = playing ? 1 : 0;
-    amp += (target - amp) * Math.min(1, dt * 6);
-    if (Math.abs(target - amp) < 0.002) amp = target;
+    // 진폭·위치 모두 지수 감쇠로 따라간다(겹침 없는 스프링). 진폭은 천천히 피어나고, 위치는 거의 즉시
+    const goal = playing ? 1 : 0;
+    amp += (goal - amp) * (1 - Math.exp(-dt / 0.28));
+    if (Math.abs(goal - amp) < 0.002) amp = goal;
+    const to = target();
+    shown = drag !== null ? to : shown + (to - shown) * (1 - Math.exp(-dt / 0.08));
+    if (Math.abs(to - shown) < 1e-4) shown = to;
     if (!reduceMotion.matches) phase += dt * SPEED * amp;
     draw();
-    raf = (playing || amp > 0) ? requestAnimationFrame(tick) : 0;
+    raf = (playing || amp > 0 || shown !== to) ? requestAnimationFrame(tick) : 0;
     if (!raf) last = 0;
   }
 
@@ -131,19 +136,19 @@ export function createWave(el, { onSeek }) {
   el.addEventListener('pointerdown', (e) => {
     if (!dur) return;
     el.setPointerCapture(e.pointerId);
-    drag = ratioAt(e);
+    drag = shown = ratioAt(e);
     draw();
   });
   el.addEventListener('pointermove', (e) => {
     if (drag === null) return;
-    drag = ratioAt(e);
+    drag = shown = ratioAt(e);
     draw();
   });
   const finish = (e, commit) => {
     if (drag === null) return;
     const r = commit ? ratioAt(e) : null;
     drag = null;
-    if (r !== null) { cur = r * dur; onSeek(cur); }
+    if (r !== null) { cur = r * dur; shown = r; onSeek(cur); }
     draw();
   };
   el.addEventListener('pointerup', (e) => finish(e, true));
@@ -156,7 +161,7 @@ export function createWave(el, { onSeek }) {
     e.preventDefault();
     cur = Math.max(0, Math.min(dur, to));
     onSeek(cur);
-    draw();
+    animate();
   });
 
   return {
@@ -164,7 +169,7 @@ export function createWave(el, { onSeek }) {
       if (drag === null) cur = current;
       dur = duration;
       updateAria();
-      if (!raf) draw();
+      animate();
     },
     setPlaying(p) {
       playing = p;

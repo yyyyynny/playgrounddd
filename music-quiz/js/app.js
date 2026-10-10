@@ -64,9 +64,9 @@ $('themeBtn').addEventListener('click', () => {
 let deck = null;
 let raf = 0;
 
-function attach(d) {
+function attach(d, autoplay = false) {
   deck = d;
-  player.load(d.song);
+  if (autoplay) player.play(d.song); else player.load(d.song);
   render(player.state());
 }
 
@@ -136,8 +136,20 @@ let selection = new Set((store.get(KEY_SELECTION, null) || []).filter((id) => by
 if (!selection.size) selection = new Set(ALL_IDS);
 
 const quiz = { queue: [], idx: 0, answered: false, correct: 0, tried: 0 };
+const form = $('answerForm');
 const inMeta = $('inMeta');
 const inTitle = $('inTitle');
+const submitBtn = $('submitBtn');
+
+// 제출하면 화살표 버튼이 입력 바를 덮으며 「다음 문제」로 바뀐다
+function setAnswered(on) {
+  quiz.answered = on;
+  form.classList.toggle('is-answered', on);
+  inMeta.disabled = inTitle.disabled = on;
+  const label = quiz.idx + 1 < quiz.queue.length ? '다음 문제' : '결과 보기';
+  $('nextLabel').textContent = label;
+  submitBtn.setAttribute('aria-label', on ? label : '제출');
+}
 
 function shuffle(arr) {
   const a = arr.slice();
@@ -173,12 +185,11 @@ function showQuestion() {
     return;
   }
   const song = byId.get(quiz.queue[quiz.idx]);
-  quiz.answered = false;
+  setAnswered(false);
   $('progress').textContent = `문제 ${quiz.idx + 1} / ${quiz.queue.length}`;
   $('coverNum').textContent = String(quiz.idx + 1).padStart(2, '0');
   inMeta.value = '';
   inTitle.value = '';
-  inMeta.disabled = inTitle.disabled = $('submitBtn').disabled = false;
   $('feedback').replaceChildren();
   quizDeck.song = song;
   attach(quizDeck);
@@ -200,19 +211,20 @@ function marked(chars, oks, cls) {
   return out;
 }
 
-function resultField(label, answer, input, ok) {
-  const head = h('p', { className: 'result-label' }, icon(ok ? 'i-check' : 'i-x'), label);
-  if (!ok) head.firstChild.classList.add('is-bad');
-  const field = h('div', { className: 'result-field' }, head);
-  if (ok) {
-    field.append(h('p', { className: 'result-answer' }, answer));
-    return field;
-  }
+// 정답 쪽: 맞으면 원문 그대로, 틀리면 못 맞힌 글자만 빨강
+function answerSpan(answer, input, ok) {
+  if (ok) return h('span', {}, answer);
   const d = charDiff(answer, input);
-  field.append(h('p', { className: 'result-answer' }, marked(d.answer, d.answerOk, 'diff-miss')));
-  field.append(h('p', { className: 'result-mine' }, input.trim() ? marked(d.input, d.inputOk, 'diff-wrong') : '(비워 둠)'));
-  return field;
+  return marked(d.answer, d.answerOk, 'diff');
 }
+// 내 답 쪽: 틀린 글자만 빨강
+function mineSpan(answer, input, ok) {
+  if (!input.trim()) return h('span', { className: 'empty' }, '비움');
+  if (ok) return h('span', {}, input.trim());
+  const d = charDiff(answer, input);
+  return marked(d.input, d.inputOk, 'diff');
+}
+const sep = () => h('span', { className: 'sep', 'aria-hidden': 'true' }, ' – ');
 
 function submit() {
   if (quiz.answered) return;
@@ -222,31 +234,38 @@ function submit() {
   const metaOk = isCorrect(song.meta, meta);
   const titleOk = isCorrect(song.title, title);
   const ok = metaOk && titleOk;
-  quiz.answered = true;
   quiz.tried++;
   if (ok) quiz.correct++;
-  inMeta.disabled = inTitle.disabled = $('submitBtn').disabled = true;
+  setAnswered(true);
+  try { navigator.vibrate?.(ok ? 12 : [14, 60, 14]); } catch { /* 진동 미지원 */ }
 
-  const next = h('button', { type: 'button', className: 'primary-btn' },
-    quiz.idx + 1 < quiz.queue.length ? '다음 곡' : '결과 보기');
-  next.addEventListener('click', () => {
-    quiz.idx++;
-    showQuestion();
-    if (!$('quizActive').hidden) $('quizPlay').focus({ preventScroll: true });
-  });
+  // 입력 순서와 같게 「작곡가 – 작품명」 한 줄로 보여 준다
   $('feedback').replaceChildren(
-    h('div', { className: `result${ok ? ' ok' : ''}` },
-      h('p', { className: 'result-badge' }, icon(ok ? 'i-check' : 'i-x'), ok ? '정답입니다' : '아쉬워요, 정답은'),
-      resultField('작품명', song.title, title, titleOk),
-      resultField('작곡가·시대', song.meta, meta, metaOk)
-    ),
-    next
+    h('div', { className: `result ${ok ? 'is-ok' : 'is-ng'}` },
+      icon(ok ? 'i-check' : 'i-x'),
+      h('div', { className: 'result-text' },
+        h('span', { className: 'sr-only' }, ok ? '정답입니다. ' : '오답입니다. 정답은 '),
+        h('p', { className: 'result-answer' }, answerSpan(song.meta, meta, metaOk), sep(), answerSpan(song.title, title, titleOk)),
+        ok ? '' : h('p', { className: 'result-mine' },
+          h('span', { className: 'result-tag' }, '내 답'),
+          mineSpan(song.meta, meta, metaOk), sep(), mineSpan(song.title, title, titleOk))
+      )
+    )
   );
   renderScore();
-  next.focus({ preventScroll: true });
+  submitBtn.focus({ preventScroll: true });
 }
 
-$('answerForm').addEventListener('submit', (e) => { e.preventDefault(); submit(); });
+function goNext() {
+  quiz.idx++;
+  showQuestion();
+  if (!$('quizActive').hidden) $('quizPlay').focus({ preventScroll: true });
+}
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (quiz.answered) goNext(); else submit();
+});
 // 앞 칸에서 Enter: 작품명이 비어 있으면 작품명 칸으로 넘어간다
 inMeta.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.isComposing && !inTitle.value.trim()) {
@@ -257,14 +276,73 @@ inMeta.addEventListener('keydown', (e) => {
 $('reshuffle').addEventListener('click', newRound);
 $('restartAll').addEventListener('click', newRound);
 
-// ── 시트 공통: 닫기 버튼 · 바깥 클릭 ──
+// ── 시트: 아래에서 올라와 같은 길로 내려간다. 머리 부분을 끌어 내려 닫을 수 있다 ──
+function openSheet(dlg) {
+  dlg.classList.remove('is-closing');
+  dlg.style.transform = '';
+  dlg.showModal();
+}
+function closeSheet(dlg) {
+  if (!dlg.open || dlg.classList.contains('is-closing')) return;
+  dlg.style.transition = '';
+  dlg.style.transform = '';
+  dlg.classList.add('is-closing');
+  let timer = 0;
+  const done = () => {
+    clearTimeout(timer);
+    dlg.removeEventListener('transitionend', onEnd);
+    dlg.classList.remove('is-closing');
+    dlg.close();
+  };
+  const onEnd = (e) => { if (e.target === dlg && e.propertyName === 'transform') done(); };
+  dlg.addEventListener('transitionend', onEnd);
+  timer = setTimeout(done, 700); // 전환이 없을 때(동작 줄이기 등) 대비
+}
+// 경계 밖으로 끌면 점점 덜 따라온다(러버밴드) · 놓을 때 속도로 멈출 위치를 내다본다(Apple 감속 공식)
+const rubber = (over, dim) => (over * dim * 0.55) / (dim + 0.55 * over);
+const project = (v) => (v / 1000) * 0.998 / (1 - 0.998);
+
+function enableSheetDrag(dlg) {
+  const head = dlg.querySelector('.sheet-head');
+  let y0 = 0, dy = 0, hist = null;
+  head.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button') || dlg.classList.contains('is-closing')) return;
+    head.setPointerCapture(e.pointerId);
+    y0 = e.clientY;
+    dy = 0;
+    hist = [{ y: e.clientY, t: e.timeStamp }];
+    dlg.style.transition = 'none';
+  });
+  head.addEventListener('pointermove', (e) => {
+    if (!hist) return;
+    const raw = e.clientY - y0;
+    dy = raw >= 0 ? raw : -rubber(-raw, dlg.offsetHeight);
+    dlg.style.transform = `translateY(${dy}px)`;
+    hist.push({ y: e.clientY, t: e.timeStamp });
+    if (hist.length > 5) hist.shift();
+  });
+  const end = () => {
+    if (!hist) return;
+    const a = hist[0], b = hist[hist.length - 1];
+    const v = b.t > a.t ? ((b.y - a.y) / (b.t - a.t)) * 1000 : 0;
+    hist = null;
+    if (dy + project(v) > dlg.offsetHeight * 0.45) { closeSheet(dlg); return; }
+    dlg.style.transition = '';
+    dlg.style.transform = ''; // 제자리로 (현재 위치에서 이어서)
+  };
+  head.addEventListener('pointerup', end);
+  head.addEventListener('pointercancel', end);
+}
+
 for (const dlg of document.querySelectorAll('dialog')) {
-  dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close());
+  dlg.querySelector('[data-close]').addEventListener('click', () => closeSheet(dlg));
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); closeSheet(dlg); }); // Esc
   dlg.addEventListener('click', (e) => {
     const r = dlg.getBoundingClientRect();
     const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-    if (!inside) dlg.close();
+    if (!inside) closeSheet(dlg);
   });
+  enableSheetDrag(dlg);
 }
 
 function songsOf(g) {
@@ -272,8 +350,8 @@ function songsOf(g) {
 }
 function songText(s) {
   return h('div', { className: 'song-text' },
-    h('div', { className: 'song-title' }, s.title),
-    h('div', { className: 'song-meta' }, s.meta));
+    h('div', { className: 'song-meta' }, s.meta),
+    h('div', { className: 'song-title' }, s.title));
 }
 
 // ── 전체 목록: 「듣기」는 그 자리에서 펼쳐 재생 (외부 이동 없음) ──
@@ -305,8 +383,7 @@ function toggleInline(song, item, btn) {
 
   const d = makeDeck({ song, waveEl, playBtn, cur, dur, msg });
   inline = { song, btn, el, deck: d };
-  attach(d);
-  player.toggle(); // 클릭 안에서 바로 재생해야 모바일에서도 소리가 난다
+  attach(d, true); // 클릭 안에서 바로 재생해야 모바일에서도 소리가 난다
 }
 
 function renderList() {
@@ -330,7 +407,7 @@ function renderList() {
 
 $('openList').addEventListener('click', () => {
   player.pause();
-  listSheet.showModal();
+  openSheet(listSheet);
 });
 listSheet.addEventListener('close', () => {
   closeInline();
@@ -370,7 +447,7 @@ function renderFocus() {
 $('openFocus').addEventListener('click', () => {
   draft = new Set(selection);
   renderFocus();
-  focusSheet.showModal();
+  openSheet(focusSheet);
 });
 $('focusAll').addEventListener('click', () => { draft = new Set(ALL_IDS); renderFocus(); });
 $('focusNone').addEventListener('click', () => { draft = new Set(); renderFocus(); });
@@ -378,7 +455,7 @@ $('focusStart').addEventListener('click', () => {
   selection = new Set(draft);
   store.set(KEY_SELECTION, [...selection]);
   updateFocusLabel();
-  focusSheet.close();
+  closeSheet(focusSheet);
   newRound();
 });
 
