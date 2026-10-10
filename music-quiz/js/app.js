@@ -3,7 +3,6 @@ import { SONGS, GROUPS } from './songs.js';
 import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
-import * as cal from './calibration.js';
 
 const $ = (id) => document.getElementById(id);
 const byId = new Map(SONGS.map((s) => [s.id, s]));
@@ -68,7 +67,7 @@ let raf = 0;
 function attach(d, autoplay = false) {
   deck = d;
   if (autoplay) player.play(d.song); else player.load(d.song);
-  player.setLevel(cal.levelOf(cal.stepOf(d.song.id))); // 곡별 보정 볼륨 (load/play 뒤에 불러야 곡 전환 중인 소리를 건드리지 않는다)
+  player.setLevel(d.song.gain ?? 100); // 곡별 볼륨 (load/play 뒤에 불러야 곡 전환 중인 소리를 건드리지 않는다)
   render(player.state());
 }
 
@@ -77,7 +76,6 @@ function render(s) {
   const hasLink = Boolean(deck.song.vid);
   const mine = s.song && s.song.id === deck.song.id;
   const active = mine && (s.playing || s.buffering);
-  if (active) cal.markHeard(deck.song.id); // 재생해 본 곡 표시(보정 결과의 「그대로 둠」 판별용)
   setPlayIcon(deck.playBtn, active);
   deck.playBtn.disabled = !hasLink || !s.ready;
   deck.waveEl.setAttribute('aria-disabled', String(deck.playBtn.disabled || Boolean(s.error)));
@@ -115,29 +113,6 @@ function makeDeck({ song, waveEl, playBtn, cur, dur, msg, onRender }) {
   return d;
 }
 
-// ── 임시 도구: 곡별 소리 보정 (8칸 슬라이더, 가운데 = 기본) ──
-const gainRange = $('gainRange');
-const canSetVolume = cal.volumeSettable();
-$('gainHint').hidden = canSetVolume;
-function showStep(step) {
-  gainRange.value = String(step);
-  $('gainOut').textContent = step === 0 ? '기본' : step > 0 ? `+${step} 크게` : `${step} 작게`;
-  gainRange.setAttribute('aria-valuetext', step === 0 ? '가운데(기본)' : step > 0 ? `${step}칸 크게` : `${-step}칸 작게`);
-}
-gainRange.addEventListener('input', () => {
-  const step = Number(gainRange.value);
-  showStep(step);
-  cal.setStep(quizDeck.song.id, step);
-  player.setLevel(cal.levelOf(step));
-});
-
-$('gainReset').addEventListener('click', () => {
-  if (!confirm('이 기기에 저장된 모든 곡의 보정값을 지웁니다. 계속할까요?')) return;
-  cal.resetAll();
-  showStep(0);
-  player.setLevel(cal.levelOf(0));
-});
-
 // ── 퀴즈 ──
 const quizDeck = makeDeck({
   song: SONGS[0],
@@ -152,6 +127,19 @@ const quizDeck = makeDeck({
     $('quizFwd').disabled = disabled;
   }
 });
+// 눌림 피드백: 아이콘 버튼은 작아서 :active 의 살짝 줄어듦만으로는 눌렀는지 안 보인다.
+// 누르는 즉시 링이 퍼지고 배경이 물들며, 처음·10초 앞 버튼은 아이콘이 한 바퀴 돈다 (스타일은 .is-tapped)
+function tapFeedback(btn) {
+  btn.classList.remove('is-tapped');
+  void btn.offsetWidth; // 같은 버튼을 연달아 눌러도 애니메이션이 처음부터 다시 시작되게
+  btn.classList.add('is-tapped');
+  clearTimeout(btn._tap);
+  btn._tap = setTimeout(() => btn.classList.remove('is-tapped'), 560);
+}
+const tapTarget = (e) => { const b = e.target.closest?.('.icon-btn'); return b && !b.disabled ? b : null; };
+document.addEventListener('pointerdown', (e) => { const b = tapTarget(e); if (b) tapFeedback(b); });
+document.addEventListener('click', (e) => { if (e.detail === 0) { const b = tapTarget(e); if (b) tapFeedback(b); } }); // 키보드로 누른 경우
+
 $('quizRestart').addEventListener('click', () => player.restart());
 $('quizFwd').addEventListener('click', () => {
   player.seek((player.time().current || quizDeck.song.start) + 10);
@@ -176,51 +164,6 @@ function setAnswered(on) {
   $('nextLabel').textContent = label;
   submitBtn.setAttribute('aria-label', on ? label : '제출');
 }
-
-// 완료 화면: 지금까지의 보정값(가만히 둔 곡 포함) 전체를 복사·저장할 수 있게 보여 준다
-function calibrationText() {
-  const report = cal.buildReport(SONGS, cal.currentState(), {
-    date: new Date().toLocaleDateString('sv-SE'),
-    userAgent: navigator.userAgent,
-    volumeSettable: canSetVolume
-  });
-  return { report, text: cal.toText(report) };
-}
-function renderCalibration() {
-  const { report, text } = calibrationText();
-  const n = cal.summarize(report);
-  $('calSummary').textContent = `조정 ${n.adjusted}곡 · 그대로 ${n.kept}곡 · 안 들음 ${n.unheard}곡`;
-  $('calText').textContent = text;
-}
-function flash(btn, msg) {
-  const old = btn.dataset.label || (btn.dataset.label = btn.textContent);
-  btn.textContent = msg;
-  clearTimeout(btn._t);
-  btn._t = setTimeout(() => { btn.textContent = old; }, 1600);
-}
-$('calCopy').addEventListener('click', async () => {
-  const text = $('calText').textContent;
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch { // 클립보드 권한이 없으면 보이는 글자를 선택해 두 번 눌러 복사하게 한다
-    const r = document.createRange();
-    r.selectNodeContents($('calText'));
-    getSelection().removeAllRanges();
-    getSelection().addRange(r);
-    $('calText').closest('details').open = true;
-    flash($('calCopy'), '선택됨 — 길게 눌러 복사');
-    return;
-  }
-  flash($('calCopy'), '복사했습니다');
-});
-$('calDownload').addEventListener('click', () => {
-  const blob = new Blob([$('calText').textContent], { type: 'application/json' });
-  const a = h('a', { href: URL.createObjectURL(blob), download: `music-quiz-volume-${new Date().toLocaleDateString('sv-SE')}.json` });
-  document.body.append(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-  flash($('calDownload'), '저장했습니다');
-});
 
 function shuffle(arr) {
   const a = arr.slice();
@@ -256,7 +199,6 @@ function showQuestion() {
     player.pause();
     const miss = quiz.missed.size;
     $('doneTitle').textContent = quiz.review ? '복습 완료' : '학습 완료';
-    renderCalibration();
     $('doneScore').textContent = `${quiz.correct} / ${quiz.queue.length}`;
     $('doneSub').textContent = miss ? `${quiz.queue.length}곡 중 ${quiz.correct}곡을 맞혔습니다` : '전부 맞혔습니다';
     // 틀린 곡이 있으면 그것만 다시 푸는 버튼이 주(主) 버튼, 전체 다시 풀기는 보조
@@ -276,8 +218,6 @@ function showQuestion() {
   $('feedback').replaceChildren();
   quizDeck.song = song;
   attach(quizDeck);
-  showStep(cal.stepOf(song.id));
-  gainRange.disabled = !song.vid || !canSetVolume; // 링크 없는 곡 · 볼륨을 못 바꾸는 기기에서는 끔
 }
 
 // 글자별 맞음 여부에 따라 틀린 글자만 감싼다 (연속 구간은 하나로 묶음)
