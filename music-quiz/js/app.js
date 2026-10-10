@@ -134,7 +134,8 @@ $('quizFwd').addEventListener('click', () => {
 let selection = new Set((store.get(KEY_SELECTION, null) || []).filter((id) => byId.has(id)));
 if (!selection.size) selection = new Set(ALL_IDS);
 
-const quiz = { queue: [], idx: 0, answered: false, correct: 0, tried: 0 };
+// missed: 이번 라운드에서 틀린 곡 · review: 틀린 곡만 다시 푸는 중 · pool: 이번 라운드의 곡 전체(다시 섞기용)
+const quiz = { queue: [], idx: 0, answered: false, correct: 0, tried: 0, missed: new Set(), review: false, pool: [] };
 const form = $('answerForm');
 const inMeta = $('inMeta');
 const inTitle = $('inTitle');
@@ -163,11 +164,15 @@ function renderScore() {
   $('score').replaceChildren('맞음 ', h('b', {}, String(quiz.correct)), ' · 시도 ', h('b', {}, String(quiz.tried)));
 }
 
-function newRound() {
-  quiz.queue = shuffle(ALL_IDS.filter((id) => selection.has(id)));
+// ids 를 주면 그 곡들만 푸는 복습 라운드, 없으면 집중 학습 선택(기본은 전체) 기준의 새 라운드
+function newRound(ids) {
+  quiz.review = Array.isArray(ids);
+  quiz.pool = quiz.review ? ids : ALL_IDS.filter((id) => selection.has(id));
+  quiz.queue = shuffle(quiz.pool);
   quiz.idx = 0;
   quiz.correct = 0;
   quiz.tried = 0;
+  quiz.missed = new Set();
   showQuestion();
 }
 
@@ -178,14 +183,21 @@ function showQuestion() {
   renderScore();
   if (done) {
     player.pause();
+    const miss = quiz.missed.size;
+    $('doneTitle').textContent = quiz.review ? '복습 완료' : '학습 완료';
     $('doneScore').textContent = `${quiz.correct} / ${quiz.queue.length}`;
-    $('doneSub').textContent = `${quiz.queue.length}곡 중 ${quiz.correct}곡을 맞혔습니다`;
-    $('restartAll').focus();
+    $('doneSub').textContent = miss ? `${quiz.queue.length}곡 중 ${quiz.correct}곡을 맞혔습니다` : '전부 맞혔습니다';
+    // 틀린 곡이 있으면 그것만 다시 푸는 버튼이 주(主) 버튼, 전체 다시 풀기는 보조
+    $('retryMissed').hidden = miss === 0;
+    $('retryMissed').textContent = `틀린 ${miss}곡만 다시 풀기`;
+    $('restartAll').classList.toggle('is-secondary', miss > 0);
+    $('restartAll').textContent = quiz.review || selection.size < SONGS.length ? '처음부터 다시 풀기' : '다시 섞어서 풀기';
+    (miss ? $('retryMissed') : $('restartAll')).focus();
     return;
   }
   const song = byId.get(quiz.queue[quiz.idx]);
   setAnswered(false);
-  $('progress').textContent = `문제 ${quiz.idx + 1} / ${quiz.queue.length}`;
+  $('progress').textContent = `${quiz.review ? '복습 · ' : ''}문제 ${quiz.idx + 1} / ${quiz.queue.length}`;
   $('coverNum').textContent = String(quiz.idx + 1).padStart(2, '0');
   inMeta.value = '';
   inTitle.value = '';
@@ -234,7 +246,7 @@ function submit() {
   const titleOk = isCorrect(song.title, title);
   const ok = metaOk && titleOk;
   quiz.tried++;
-  if (ok) quiz.correct++;
+  if (ok) quiz.correct++; else quiz.missed.add(song.id);
   setAnswered(true);
   try { navigator.vibrate?.(ok ? 12 : [14, 60, 14]); } catch { /* 진동 미지원 */ }
 
@@ -272,8 +284,10 @@ inMeta.addEventListener('keydown', (e) => {
     inTitle.focus();
   }
 });
-$('reshuffle').addEventListener('click', newRound);
-$('restartAll').addEventListener('click', newRound);
+// 다시 섞기는 지금 라운드의 곡 그대로(복습 중이면 복습 곡만), 처음부터 다시 풀기는 선택 기준 전체
+$('reshuffle').addEventListener('click', () => newRound(quiz.review ? quiz.pool : undefined));
+$('restartAll').addEventListener('click', () => newRound());
+$('retryMissed').addEventListener('click', () => newRound([...quiz.missed]));
 
 // ── 시트: 아래에서 올라와 같은 길로 내려간다. 머리 부분을 끌어 내려 닫을 수 있다 ──
 function openSheet(dlg) {

@@ -274,6 +274,7 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: .98rem;
 }
 .primary-btn:disabled { opacity: .4; cursor: default; transform: none; }
+.primary-btn.is-secondary { background: var(--accent-soft); color: var(--accent); }
 
 .done { text-align: center; padding: 18px 4px 4px; }
 .done-score { font-size: 3rem; font-weight: 800; letter-spacing: -0.05em; line-height: 1.05; margin: 4px 0 6px; font-variant-numeric: tabular-nums; }
