@@ -16,6 +16,8 @@ test('따옴표·공백·온점·대소문자는 쓰지 않아도 된다', () =>
 test('中 은 중으로 쓰거나 생략해도 되지만 단어 속 중은 그대로', () => {
   assert.ok(isCorrect(song(3).title, '사계 중 봄 1악장'));
   assert.ok(isCorrect(song(3).title, '사계 봄 1악장'));
+  assert.ok(isCorrect(song(26).title, '재즈모음곡중왈츠2번')); // 붙여 쓴 중
+  assert.ok(isCorrect(song(3).title, '사계中봄1악장'));
   assert.ok(isCorrect(song(1).meta, '중세시대'));
   assert.equal(isCorrect(song(1).meta, '세시대'), false);
 });
@@ -47,4 +49,28 @@ test('diff 는 틀린 글자만, 고른 표현 기준으로 표시한다', () =>
 test('정답을 그대로 입력하면 32곡 모두 정답', () => {
   assert.equal(SONGS.length, 32);
   for (const s of SONGS) assert.ok(isCorrect(s.title, s.title) && isCorrect(s.meta, s.meta), s.title);
+});
+
+// 사람이 실제로 칠 법한 형태 — 32곡 모두에 대해
+const plain = (str) => str.replace(/中/g, ' 중 ').replace(/[‘’'".]/g, '').replace(/\s+/g, ' ').trim();
+function forms(str) {
+  const m = str.match(/^(.*?)\(([^)]*)\)$/);
+  const x = m ? m[1] : str;
+  const out = [str, plain(x), x.replace(/\s/g, '').replace(/中/g, '중'), x.replace(/\s/g, '').replace(/中/g, '')];
+  if (m) {
+    const cut = m[1].lastIndexOf('中');
+    out.push(plain((cut >= 0 ? m[1].slice(0, cut + 1) + ' ' : '') + m[2]));
+  }
+  return out;
+}
+
+test('32곡 모두: 실사용 입력 변형은 정답, 오타·빈칸은 오답', () => {
+  for (const s of SONGS) {
+    for (const f of forms(s.meta)) assert.ok(isCorrect(s.meta, f), `${s.id} 작곡가 「${f}」`);
+    for (const f of forms(s.title)) assert.ok(isCorrect(s.title, f), `${s.id} 작품명 「${f}」`);
+    assert.equal(isCorrect(s.title, s.title.slice(0, -1) + '쀍'), false, `${s.id} 오타`);
+    assert.equal(isCorrect(s.title, ''), false);
+    const d = charDiff(s.title, s.title.slice(0, -1) + '쀍');
+    assert.ok(d.answerOk.some((v) => !v) || d.inputOk.some((v) => !v), `${s.id} 오타 빨강 표시`);
+  }
 });
