@@ -390,6 +390,8 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 .gain-ticks i { width: 6px; height: 6px; border-radius: 50%; background: color-mix(in srgb, var(--muted) 50%, transparent); }
 .gain-ticks i:nth-child(5) { width: 4px; height: 16px; border-radius: 2px; background: var(--muted); } /* 가운데 = 기본 */
 .gain-ends { display: flex; justify-content: space-between; margin-top: 0; font-size: .72rem; color: var(--muted); }
+.gain-rule { margin: 8px 0 0; font-size: .74rem; line-height: 1.55; color: var(--muted); word-break: keep-all; text-wrap: pretty; }
+.gain-reset { padding: 6px 0 0; font-size: .74rem; font-weight: 500; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
 .gain-hint { margin: 6px 0 0; font-size: .78rem; color: var(--bad); }
 .gain:has(input:disabled) .gain-field, .gain:has(input:disabled) .gain-ends { opacity: .45; }
 

@@ -54,6 +54,12 @@ export function markHeard(id) {
 
 export const currentState = () => data();
 
+// 모든 곡의 보정값을 지운다 (기준을 바꿔 처음부터 다시 맞출 때)
+export function resetAll() {
+  cache = {};
+  try { localStorage.removeItem(KEY); } catch { /* 저장소를 못 쓰면 메모리만 비움 */ }
+}
+
 // ── 결과 ──
 // state: { [곡 번호]: { s: 칸 수, h: 들었는지(0|1) } }
 export function buildReport(songs, state, meta = {}) {

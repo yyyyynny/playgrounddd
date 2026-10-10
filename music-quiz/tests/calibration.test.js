@@ -1,7 +1,7 @@
 // 임시 소리 보정 도구의 순수 로직 테스트 (도구를 지울 때 이 파일도 함께 지운다)
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { levelOf, statusOf, buildReport, summarize, toText } from '../js/calibration.js';
+import { levelOf, statusOf, buildReport, summarize, toText, setStep, stepOf, markHeard, currentState, resetAll } from '../js/calibration.js';
 import { SONGS } from '../js/songs.js';
 
 test('칸 수 → 볼륨: 가운데 70, +4칸 100, -4칸 40, 범위 밖은 0~100 으로 자른다', () => {
@@ -31,6 +31,15 @@ test('결과: 32곡 전부 포함, 가만히 둔 곡(kept)도 들어가고, 링�
   assert.equal(by(27).status, 'no-link');
   const n = summarize(r);
   assert.deepEqual([n.adjusted, n.kept, n.unheard, n['no-link']], [2, 1, 28, 1]);
+});
+
+test('모두 지우기: 칸 수와 들은 기록이 전부 초기화된다', () => {
+  setStep(3, 2); markHeard(5);
+  assert.equal(stepOf(3), 2);
+  assert.equal(Object.keys(currentState()).length, 2);
+  resetAll();
+  assert.equal(stepOf(3), 0);
+  assert.equal(Object.keys(currentState()).length, 0);
 });
 
 test('복사용 텍스트는 올바른 JSON 이고 곡 순서·값이 그대로 돌아온다', () => {

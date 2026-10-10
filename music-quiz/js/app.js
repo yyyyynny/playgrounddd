@@ -131,6 +131,13 @@ gainRange.addEventListener('input', () => {
   player.setLevel(cal.levelOf(step));
 });
 
+$('gainReset').addEventListener('click', () => {
+  if (!confirm('이 기기에 저장된 모든 곡의 보정값을 지웁니다. 계속할까요?')) return;
+  cal.resetAll();
+  showStep(0);
+  player.setLevel(cal.levelOf(0));
+});
+
 // ── 퀴즈 ──
 const quizDeck = makeDeck({
   song: SONGS[0],
