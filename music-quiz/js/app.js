@@ -79,8 +79,7 @@ function render(s) {
   deck.playBtn.disabled = !hasLink || !s.ready;
   deck.waveEl.setAttribute('aria-disabled', String(deck.playBtn.disabled || Boolean(s.error)));
   deck.wave.setPlaying(mine && s.playing);
-  deck.msg.textContent = !hasLink ? '원곡 링크가 없는 곡입니다. 작곡가와 작품명만 맞혀 보세요.'
-    : s.error || (s.ready ? '' : '플레이어 준비 중…');
+  deck.msg.textContent = !hasLink ? '' : s.error || (s.ready ? '' : '플레이어 준비 중…');
   deck.msg.classList.toggle('is-error', Boolean(s.error));
   deck.onRender?.(active, deck.playBtn.disabled || Boolean(s.error));
   sync();
@@ -468,6 +467,15 @@ $('focusStart').addEventListener('click', () => {
   updateFocusLabel();
   closeSheet(focusSheet);
   newRound();
+});
+
+// ── 새로고침 방지: 풀던 중에 새로고침 · 닫기 · 뒤로 가기를 하면 한 번 묻는다 ──
+// (모바일 당겨서 새로고침은 style.css 의 overscroll-behavior 로 막는다)
+window.addEventListener('beforeunload', (e) => {
+  const inProgress = quiz.tried > 0 && quiz.idx < quiz.queue.length;
+  if (!inProgress) return;
+  e.preventDefault();
+  e.returnValue = ''; // 일부 브라우저는 이 값이 있어야 확인 창을 띄운다
 });
 
 // ── 시작 ──

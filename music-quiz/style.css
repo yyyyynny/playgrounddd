@@ -63,6 +63,8 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 html { background: var(--bg); }
+/* 모바일에서 아래로 당겨 새로고침되는 것 막기 */
+html, body { overscroll-behavior-y: none; }
 body {
   background: var(--bg);
   color: var(--ink);
