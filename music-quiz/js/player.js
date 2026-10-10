@@ -5,6 +5,10 @@
 // 1) 소리가 나는 중에 끊는 동작(곡 전환 · 정지 · 탐색 · 일시정지)은 먼저 볼륨을 짧게 줄인 뒤에 한다
 // 2) 재생·탐색 직후에는 볼륨 0 으로 두고, 목표 위치에서 재생이 실제로 흐르는 걸 확인한 뒤 서서히 키운다
 //    (유튜브는 준비 상태에서 이미 시작 초를 보고하고, 처음 재생 때 0초 소리를 잠깐 낸 뒤 건너뛴다)
+// 4) 재생 버튼 모양은 유튜브 상태 알림이 아니라 '사용자가 재생을 원했는가(intent)' 로 정한다.
+//    영상 준비(cue) 완료 알림이 재생 도중에 늦게 도착하면 버튼이 ▶ → ❚❚ → ▶ → ❚❚ 로 깜빡였다.
+//    처음 재생은 cue 가 끝났는지 기다리지 않고 loadVideoById 로 확실하게 시작하고,
+//    정말 시작이 안 되면 한 번 다시 시도한 뒤에야 버튼을 되돌린다
 // 3) mute()/unMute() 는 쓰지 않는다 — 버퍼링이 긴 곡(108초 시작 등)은 탭 몇 초 뒤에 unMute 가 불려
 //    브라우저 자동 재생 정책에 막혀 소리가 안 나는 경우가 있었다. 볼륨 조절은 이 정책의 대상이 아니다
 
@@ -32,6 +36,10 @@ let error = '';
 let pausing = false;    // 소리를 줄이는 중 (곧 멈춤)
 let gate = null;        // 소리를 열 조건 { at, strict, playingSince, firstRaw }
 let pending = null;     // 소리를 줄인 뒤 할 일
+let intent = false;     // 사용자가 재생을 원하는 상태 (버튼 모양의 기준)
+let started = false;    // 지금 곡이 이미 한 번 재생 상태(1)가 되었는가
+let watchT = 0;
+let stuck = { since: 0, retried: false };
 let vol = 100;
 let fadeRaf = 0;
 let gateRaf = 0;
@@ -45,8 +53,8 @@ function emit() {
 }
 
 export function state() {
-  const on = (ytState === 1 || ytState === 3) && !pausing;
-  return { song, ready, error, playing: on && ytState === 1, buffering: on && ytState === 3 };
+  const on = intent && !pausing && !error;
+  return { song, ready, error, playing: on && ytState === 1, buffering: on && ytState !== 1 };
 }
 
 export function subscribe(fn) {
@@ -125,6 +133,32 @@ function watchGate() {
   gateRaf = requestAnimationFrame(watchGate);
 }
 
+// 재생을 원하는 동안 상태를 감시한다
+// - 시작 전(5/-1) 상태로 0.9초 넘게 머물면 한 번 다시 시도(준비 완료가 재생을 취소한 경우)
+// - 우리가 요청하지 않은 일시정지(2)가 0.7초 넘게 이어지거나 4.5초 넘게 시작이 안 되면 버튼을 되돌린다
+function watch() {
+  if (!watchT) watchT = setInterval(checkIntent, 150);
+}
+function checkIntent() {
+  if (!intent || !song?.vid) { clearInterval(watchT); watchT = 0; return; }
+  const now = performance.now();
+  if (ytState === 1 || ytState === 3) { stuck = { since: 0, retried: false }; return; }
+  if (!stuck.since) stuck.since = now;
+  const wait = now - stuck.since;
+  if (ytState === 2 && wait > 700) { intent = false; emit(); return; }
+  if ((ytState === 5 || ytState === -1) && wait > 900 && !stuck.retried) {
+    stuck.retried = true;
+    begin();
+    return;
+  }
+  if (wait > 4500) { intent = false; emit(); }
+}
+// 처음 재생: cue 가 끝났는지와 무관하게 이 곡을 시작점에서 바로 불러 재생
+function begin() {
+  hold(startOf(song));
+  yt.loadVideoById({ videoId: song.vid, startSeconds: startOf(song) });
+}
+
 function resetClock(t) {
   // 탐색 직후 잠깐은 옛 위치 값이 올 수 있어 큰 오차를 무시한다
   clock = { t, at: performance.now(), raw: yt ? yt.getCurrentTime() || 0 : -1, guard: performance.now() + 1500 };
@@ -148,8 +182,13 @@ export function init(hostId) {
           if (song?.vid) cue(song);
           emit();
         },
-        onStateChange: (e) => { ytState = e.data; emit(); },
-        onError: (e) => { error = ERRORS[e.data] || '재생 중 오류가 났습니다'; ytState = -1; emit(); }
+        onStateChange: (e) => {
+          ytState = e.data;
+          if (ytState === 1) started = true;
+          if (ytState === 0) intent = false; // 끝까지 재생됨
+          emit();
+        },
+        onError: (e) => { error = ERRORS[e.data] || '재생 중 오류가 났습니다'; ytState = -1; intent = false; emit(); }
       }
     });
   };
@@ -160,6 +199,7 @@ export function init(hostId) {
 }
 
 function cue(s) {
+  started = false;
   resetClock(startOf(s));
   yt.cueVideoById({ videoId: s.vid, startSeconds: startOf(s) });
 }
@@ -169,6 +209,8 @@ export function load(s) {
   if (song && s && song.id === s.id && !error) return;
   song = s;
   error = '';
+  intent = false;
+  started = false;
   if (ready) {
     quietThen(() => {
       if (song !== s) return; // 줄이는 사이 다른 곡으로 바뀜
@@ -191,12 +233,14 @@ export function play(s) {
   }
   song = s;
   error = '';
+  intent = true;
+  started = false;
   // 다른 곡이 들리는 중이면 줄인 뒤 바꾼다. 조용하면 클릭 안에서 바로 불러 모바일 제약도 피한다
   quietThen(() => {
-    if (song !== s) return;
-    hold(startOf(s));
-    yt.loadVideoById({ videoId: s.vid, startSeconds: startOf(s) });
+    if (song !== s || !intent) return;
+    begin();
   });
+  watch();
   ytState = -1;
   pausing = false;
   resetClock(startOf(s));
@@ -212,49 +256,67 @@ export function toggle() {
     play(s);
     return;
   }
-  const wasPausing = pausing;
   flush(); // 곡 전환 등 줄이던 일을 먼저 끝낸다
-  if ((ytState === 1 || ytState === 3) && !wasPausing && !pausing) {
+  if (intent && !pausing) {
     pause();
     return;
   }
-  // 처음 재생(준비 상태)은 건너뜀이 생길 수 있어 엄격하게, 일시정지 후 이어 듣기는 바로 연다
-  const first = ytState === 5 || ytState === -1;
-  hold(first ? startOf(song) : Math.max(0, (yt.getCurrentTime() || 0) - 1), first);
-  yt.playVideo();
+  intent = true;
+  stuck = { since: 0, retried: false };
+  if (!started) {
+    begin(); // 처음 재생(건너뜀이 생길 수 있어 엄격하게)
+  } else {
+    hold(Math.max(0, (yt.getCurrentTime() || 0) - 1), false); // 일시정지 후 이어 듣기는 바로 연다
+    yt.playVideo();
+  }
+  watch();
   emit();
 }
 
 export function pause() {
-  if (!ready || pausing || !(ytState === 1 || ytState === 3)) return;
-  pausing = true;
-  emit();
-  quietThen(() => {
-    yt.pauseVideo();
-    pausing = false;
-  });
+  if (!ready) return;
+  const wasIntent = intent;
+  intent = false;
+  gate = null;
+  if (pausing) return;
+  if (ytState === 1 || ytState === 3) {
+    pausing = true;
+    emit();
+    quietThen(() => {
+      yt.pauseVideo();
+      pausing = false;
+    });
+  } else {
+    if (wasIntent) yt.pauseVideo(); // 아직 시작 전이어도 나중에 갑자기 시작되지 않게
+    emit();
+  }
 }
 
 export function seek(sec) {
   if (!ready || !song || error) return;
   const to = Math.max(0, sec);
-  const wasPaused = ytState === 2 || pausing;
+  const wasPaused = pausing || (!intent && ytState === 2);
+  if (!wasPaused) { intent = true; watch(); }
   resetClock(to);
   quietThen(() => {
     hold(to);
     yt.seekTo(to, true);
-    if (wasPaused) { pausing = false; yt.pauseVideo(); }
+    if (wasPaused) { pausing = false; gate = null; yt.pauseVideo(); }
   });
 }
 
 export function restart() {
   if (!ready || !song || error) return;
+  intent = true;
+  stuck = { since: 0, retried: false };
   resetClock(startOf(song));
   quietThen(() => {
+    if (!started) { begin(); return; }
     hold(startOf(song));
     yt.seekTo(startOf(song), true);
     yt.playVideo();
   });
+  watch();
 }
 
 // 화면에 그릴 재생 시각. 재생 중에는 시계로 흐르고, 유튜브 값이 새로 오면 오차의 20%만 따라간다(되돌아가지 않음)
