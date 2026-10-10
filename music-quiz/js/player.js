@@ -41,6 +41,7 @@ let started = false;    // 지금 곡이 이미 한 번 재생 상태(1)가 되�
 let watchT = 0;
 let stuck = { since: 0, retried: false };
 let vol = 100;
+let level = 100;       // 소리가 열렸을 때의 목표 볼륨(0~100) — 곡별 보정값
 let fadeRaf = 0;
 let gateRaf = 0;
 // 화면용 시계: 유튜브 시각은 띄엄띄엄·늦게 온다. 자체 시계로 흐르게 하고, 새 값이 오면 오차의 일부만 반영한다
@@ -55,6 +56,12 @@ function emit() {
 export function state() {
   const on = intent && !pausing && !error;
   return { song, ready, error, playing: on && ytState === 1, buffering: on && ytState !== 1 };
+}
+
+// 곡의 목표 볼륨을 정한다(보정). 소리가 열려 있으면 바로 반영하고, 아직 열기 전이면 열릴 때 이 값으로 열린다
+export function setLevel(pct) {
+  level = Math.max(0, Math.min(100, pct));
+  if (ready && intent && !pausing && !gate && !pending && song?.vid) fade(level, 90);
 }
 
 export function subscribe(fn) {
@@ -126,7 +133,7 @@ function watchGate() {
     const advanced = near && gate.firstRaw !== null && t > gate.firstRaw; // 시각이 실제로 흘렀다
     if ((played >= SETTLE && near && (!gate.strict || advanced || played >= GIVE_UP)) || played >= HARD_OPEN) {
       gate = null;
-      fade(100, FADE_IN);
+      fade(level, FADE_IN);
       return;
     }
   }
