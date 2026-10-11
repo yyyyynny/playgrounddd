@@ -7,8 +7,9 @@
 //    (유튜브는 준비 상태에서 이미 시작 초를 보고하고, 처음 재생 때 0초 소리를 잠깐 낸 뒤 건너뛴다)
 // 4) 재생 버튼 모양은 유튜브 상태 알림이 아니라 '사용자가 재생을 원했는가(intent)' 로 정한다.
 //    영상 준비(cue) 완료 알림이 재생 도중에 늦게 도착하면 버튼이 ▶ → ❚❚ → ▶ → ❚❚ 로 깜빡였다.
-//    처음 재생은 cue 가 끝났는지 기다리지 않고 loadVideoById 로 확실하게 시작하고,
-//    정말 시작이 안 되면 한 번 다시 시도한 뒤에야 버튼을 되돌린다
+//    처음 재생은 cue 가 끝났는지 기다리지 않고 loadVideoById 로 확실하게 시작한다.
+//    불러오는 중(-1 · 3)에는 다시 불러오지 않고 기다린다 — 느린 회선(LTE 등)에서 0.9초 만에 다시 불러오면
+//    처음부터 다시 받느라 더 늦어지고, 4.5초에 포기하면 버튼은 ▶ 인데 나중에 소리가 나는 일이 있었다(2026-10-11 제보)
 // 3) mute()/unMute() 는 쓰지 않는다 — 버퍼링이 긴 곡(108초 시작 등)은 탭 몇 초 뒤에 unMute 가 불려
 //    브라우저 자동 재생 정책에 막혀 소리가 안 나는 경우가 있었다. 볼륨 조절은 이 정책의 대상이 아니다
 
@@ -39,7 +40,10 @@ let pending = null;     // 소리를 줄인 뒤 할 일
 let intent = false;     // 사용자가 재생을 원하는 상태 (버튼 모양의 기준)
 let started = false;    // 지금 곡이 이미 한 번 재생 상태(1)가 되었는가
 let watchT = 0;
-let stuck = { since: 0, retried: false };
+let stuck = { since: 0, retried: false, paused: 0 };
+let waiting = 0;        // 재생을 원했는데 아직 소리가 안 난 시간(초, 화면 안내용)
+const SLOW = 3000;      // 이만큼 지나면 「기다리는 중」 안내(ms)
+const NO_ANSWER = 30000; // 이만큼 지나도 시작이 안 되면 멈추고 다시 누르게 한다(ms)
 let vol = 100;
 let level = 100;       // 소리가 열렸을 때의 목표 볼륨(0~100) — 곡별 보정값
 let fadeRaf = 0;
@@ -55,7 +59,7 @@ function emit() {
 
 export function state() {
   const on = intent && !pausing && !error;
-  return { song, ready, error, playing: on && ytState === 1, buffering: on && ytState !== 1 };
+  return { song, ready, error, waiting, playing: on && ytState === 1, buffering: on && ytState !== 1 };
 }
 
 // 곡의 목표 볼륨을 정한다(보정). 소리가 열려 있으면 바로 반영하고, 아직 열기 전이면 열릴 때 이 값으로 열린다
@@ -141,24 +145,43 @@ function watchGate() {
 }
 
 // 재생을 원하는 동안 상태를 감시한다
-// - 시작 전(5/-1) 상태로 0.9초 넘게 머물면 한 번 다시 시도(준비 완료가 재생을 취소한 경우)
-// - 우리가 요청하지 않은 일시정지(2)가 0.7초 넘게 이어지거나 4.5초 넘게 시작이 안 되면 버튼을 되돌린다
+// - 준비 상태(5)에 0.9초 넘게 머물면 한 번 다시 시도(늦게 온 준비 완료가 재생 명령을 묻은 경우)
+// - 불러오는 중(-1 · 3)은 기다리고, 3초가 넘으면 기다린 시간을 알린다. 30초가 넘으면 멈추고 다시 누르게 한다
+// - 우리가 요청하지 않은 일시정지(2)가 0.7초 넘게 이어지면 버튼을 되돌린다
 function watch() {
   if (!watchT) watchT = setInterval(checkIntent, 150);
 }
+function setWaiting(ms) {
+  const sec = ms >= SLOW ? Math.floor(ms / 1000) : 0;
+  if (sec !== waiting) { waiting = sec; emit(); }
+}
 function checkIntent() {
-  if (!intent || !song?.vid) { clearInterval(watchT); watchT = 0; return; }
+  if (!intent || !song?.vid) { clearInterval(watchT); watchT = 0; setWaiting(0); return; }
   const now = performance.now();
-  if (ytState === 1 || ytState === 3) { stuck = { since: 0, retried: false }; return; }
+  if (ytState === 1) { stuck = { since: 0, retried: false, paused: 0 }; setWaiting(0); return; }
   if (!stuck.since) stuck.since = now;
   const wait = now - stuck.since;
-  if (ytState === 2 && wait > 700) { intent = false; emit(); return; }
-  if ((ytState === 5 || ytState === -1) && wait > 900 && !stuck.retried) {
+  if (ytState === 2) {
+    if (!stuck.paused) stuck.paused = now;
+    if (now - stuck.paused > 700) { intent = false; setWaiting(0); emit(); }
+    return;
+  }
+  stuck.paused = 0;
+  if (ytState === 5 && wait > 900 && !stuck.retried) {
     stuck.retried = true;
     begin();
     return;
   }
-  if (wait > 4500) { intent = false; emit(); }
+  setWaiting(wait);
+  if (wait > NO_ANSWER || (ytState === 5 && stuck.retried && wait > 4500)) {
+    intent = false;
+    gate = null;
+    setVol(0);
+    yt.pauseVideo(); // 나중에 갑자기 소리가 나지 않게
+    error = '유튜브가 응답하지 않습니다. 재생 버튼을 다시 눌러 주세요';
+    setWaiting(0);
+    emit();
+  }
 }
 // 처음 재생: cue 가 끝났는지와 무관하게 이 곡을 시작점에서 바로 불러 재생
 function begin() {
@@ -242,6 +265,7 @@ export function play(s) {
   error = '';
   intent = true;
   started = false;
+  stuck = { since: 0, retried: false, paused: 0 };
   // 다른 곡이 들리는 중이면 줄인 뒤 바꾼다. 조용하면 클릭 안에서 바로 불러 모바일 제약도 피한다
   quietThen(() => {
     if (song !== s || !intent) return;
@@ -269,7 +293,7 @@ export function toggle() {
     return;
   }
   intent = true;
-  stuck = { since: 0, retried: false };
+  stuck = { since: 0, retried: false, paused: 0 };
   if (!started) {
     begin(); // 처음 재생(건너뜀이 생길 수 있어 엄격하게)
   } else {
@@ -315,7 +339,7 @@ export function seek(sec) {
 export function restart() {
   if (!ready || !song || error) return;
   intent = true;
-  stuck = { since: 0, retried: false };
+  stuck = { since: 0, retried: false, paused: 0 };
   resetClock(startOf(song));
   quietThen(() => {
     if (!started) { begin(); return; }
