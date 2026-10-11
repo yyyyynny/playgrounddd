@@ -19,7 +19,7 @@ export const SONGS = [
   { id: 14, meta: '드뷔시', title: '달빛', vid: '97_VJve7UVc', start: 0, gain: 100 },
   { id: 15, meta: '라벨', title: '볼레로', vid: 'f4iMjjnXbT4', start: 0, gain: 78 },
   { id: 16, meta: '쇼팽', title: '왈츠 7번 op.64 no.2', vid: 'cSmU9qu-tKM', start: 0, gain: 78 },
-  { id: 17, meta: '쇼팽', title: '에튀드 op.25 no.11 ‘겨울바람’', vid: '60Upg8Hz0rI', start: 0, gain: 85 },
+  { id: 17, meta: '쇼팽', title: '에튀드 op.25 no.11 ‘겨울바람’', vid: '60Upg8Hz0rI', start: 0, gain: 93 },
   { id: 18, meta: '리스트', title: '대연습곡 S.141. no.3 ‘라캄파넬라’', vid: 'Hf2MFBz4S_g', start: 0, gain: 78 },
   { id: 19, meta: '슈트라우스', title: '차라투스트라는 이렇게 말했다.', vid: 'o-lzzuEVSMY', start: 0, gain: 70 },
   { id: 20, meta: '슈톡하우젠', title: '습작2', vid: 'y5Kh6c8GMCA', start: 6, gain: 78 },
