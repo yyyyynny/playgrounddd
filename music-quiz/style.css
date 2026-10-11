@@ -115,7 +115,7 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 .icon-btn, .pill, .text-btn, .play-btn, .submit-btn, .primary-btn, .listen-btn, .mini-play {
   transition: transform var(--t-press) ease-out, background-color var(--t-fast), color var(--t-fast), opacity var(--t-fast);
 }
-.icon-btn:active, .pill:active, .text-btn:active, .listen-btn:active, .mini-play:active { transform: scale(.94); }
+.pill:active, .text-btn:active, .listen-btn:active, .mini-play:active { transform: scale(.94); }
 .play-btn:active { transform: scale(.93); }
 .primary-btn:active { transform: scale(.98); }
 
@@ -124,22 +124,29 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   width: 40px; height: 40px; border-radius: 50%;
   border: 0; background: transparent; color: var(--ink);
 }
-.icon-btn:hover { background: var(--surface-2); }
 .icon-btn.lg { width: 48px; height: 48px; color: var(--muted); }
 .icon-btn.lg svg { width: 24px; height: 24px; }
 .icon-btn:disabled { opacity: .35; cursor: default; transform: none; }
 
-/* 눌림 피드백(.is-tapped 는 app.js 가 누르는 즉시 붙였다 뗀다): 짧게 눌러도 보이도록 링이 퍼지고 배경이 물든다.
-   처음·10초 앞 버튼은 아이콘이 한 바퀴 돈다(처음 = 반시계, 앞으로 = 시계) */
-.icon-btn.is-tapped { background: var(--accent-soft); color: var(--accent); animation: tap-ring 520ms var(--ease-out); }
-.icon-btn[data-spin].is-tapped svg { animation: spin-cw 520ms var(--ease-spring); }
-.icon-btn[data-spin="ccw"].is-tapped svg { animation-name: spin-ccw; }
-@keyframes tap-ring {
-  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 40%, transparent); }
-  to { box-shadow: 0 0 0 14px color-mix(in srgb, var(--accent) 0%, transparent); }
+/* 눌림 표시 (Apple 방식) — 누르는 순간 바로 하이라이트가 켜지고, 손을 떼면 부드럽게 사라진다.
+   · 하이라이트는 손가락을 따라간다: 누르는 동안 유지, 떼면 사라짐(시간 타이머로 따로 놀지 않는다)
+   · 아주 짧게 탭해도 보이도록 최소 표시 시간은 app.js 가 .is-pressed 로 보장한다
+   · 켜질 때는 즉시(60ms), 꺼질 때는 천천히(280ms 이상) — 끊김 없이 현재 값에서 이어진다
+   · 호버는 터치 기기에서 탭 뒤에도 남아 반투명 원이 사라지지 않으므로 마우스 기기에서만 쓴다 */
+.icon-btn {
+  transition: background-color 280ms var(--ease-out), transform 360ms var(--ease-spring), color var(--t-fast), opacity var(--t-fast);
 }
-@keyframes spin-cw { to { transform: rotate(360deg); } }
-@keyframes spin-ccw { to { transform: rotate(-360deg); } }
+.icon-btn:active, .icon-btn.is-pressed {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  transform: scale(.9);
+  transition-duration: 60ms, 90ms, var(--t-fast), var(--t-fast);
+}
+@media (hover: hover) and (pointer: fine) {
+  .icon-btn:hover:not(:active):not(.is-pressed) { background: var(--surface-2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .icon-btn:active, .icon-btn.is-pressed { transform: none; }
+}
 
 .nav { display: flex; gap: 8px; margin-bottom: 14px; }
 .pill {

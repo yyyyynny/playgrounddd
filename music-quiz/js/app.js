@@ -127,18 +127,31 @@ const quizDeck = makeDeck({
     $('quizFwd').disabled = disabled;
   }
 });
-// 눌림 피드백: 아이콘 버튼은 작아서 :active 의 살짝 줄어듦만으로는 눌렀는지 안 보인다.
-// 누르는 즉시 링이 퍼지고 배경이 물들며, 처음·10초 앞 버튼은 아이콘이 한 바퀴 돈다 (스타일은 .is-tapped)
-function tapFeedback(btn) {
-  btn.classList.remove('is-tapped');
-  void btn.offsetWidth; // 같은 버튼을 연달아 눌러도 애니메이션이 처음부터 다시 시작되게
-  btn.classList.add('is-tapped');
-  clearTimeout(btn._tap);
-  btn._tap = setTimeout(() => btn.classList.remove('is-tapped'), 560);
+// 눌림 표시(Apple 방식): 누르는 순간 하이라이트를 켜고, 손을 떼면 끈다(스타일은 .is-pressed).
+// 아주 짧게 탭해도 보이도록 최소 표시 시간만 보장하고, 그 뒤에는 CSS 가 부드럽게 꺼 준다.
+const MIN_PRESS = 120; // ms
+let pressed = null;    // { btn, t }
+function releasePress() {
+  if (!pressed) return;
+  const { btn, t } = pressed;
+  pressed = null;
+  setTimeout(() => btn.classList.remove('is-pressed'), Math.max(0, MIN_PRESS - (performance.now() - t)));
 }
-const tapTarget = (e) => { const b = e.target.closest?.('.icon-btn'); return b && !b.disabled ? b : null; };
-document.addEventListener('pointerdown', (e) => { const b = tapTarget(e); if (b) tapFeedback(b); });
-document.addEventListener('click', (e) => { if (e.detail === 0) { const b = tapTarget(e); if (b) tapFeedback(b); } }); // 키보드로 누른 경우
+document.addEventListener('pointerdown', (e) => {
+  const btn = e.target.closest?.('.icon-btn');
+  if (!btn || btn.disabled) return;
+  releasePress();
+  btn.classList.add('is-pressed');
+  pressed = { btn, t: performance.now() };
+});
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) document.addEventListener(ev, releasePress);
+window.addEventListener('blur', releasePress);
+document.addEventListener('click', (e) => { // 키보드(Enter · Space)로 누른 경우
+  const btn = e.detail === 0 && e.target.closest?.('.icon-btn');
+  if (!btn || btn.disabled) return;
+  btn.classList.add('is-pressed');
+  setTimeout(() => btn.classList.remove('is-pressed'), MIN_PRESS + 80);
+});
 
 $('quizRestart').addEventListener('click', () => player.restart());
 $('quizFwd').addEventListener('click', () => {
