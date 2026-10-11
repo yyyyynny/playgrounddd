@@ -35,7 +35,7 @@ export const SONGS = [
   { id: 29, meta: '로시니', title: '오페라 ‘세비야의 이발사’ 中 ‘방금 들린 그대 음성’', vid: 'pqwnxEf-2KY', start: 108, gain: 85 },
   { id: 30, meta: '모차르트', title: '오페라 ‘피가로의 결혼’ 中 ‘더 이상 날지 못하리 나비야’', vid: 'MXXzaogIn_I', start: 2, gain: 93 },
   { id: 31, meta: '모차르트', title: '오페라 ‘피가로의 결혼’ 中 ‘편지 이중창’', vid: 'un7tf_iCGPA', start: 0, gain: 78 },
-  { id: 32, meta: '이병우', title: '영화 장화홍련 中 돌이킬 수 없는 걸음', vid: 'oeLHy3dIiXs', start: 0, gain: 85 }
+  { id: 32, meta: '이병우', title: '영화 장화홍련 中 돌이킬 수 없는 걸음', vid: 'oeLHy3dIiXs', start: 0, gain: 93 }
 ];
 
 // 전체 목록 묶음 — Notion 페이지의 소제목과 같다
