@@ -1,5 +1,5 @@
 // 음악 감상 퀴즈 — 화면 상태와 이벤트
-import { SONGS, GROUPS } from './songs.js';
+import { SONGS, GROUPS, GAIN_ON } from './songs.js';
 import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
@@ -67,7 +67,7 @@ let raf = 0;
 function attach(d, autoplay = false) {
   deck = d;
   if (autoplay) player.play(d.song); else player.load(d.song);
-  player.setLevel(d.song.gain ?? 100); // 곡별 볼륨 (load/play 뒤에 불러야 곡 전환 중인 소리를 건드리지 않는다)
+  player.setLevel(GAIN_ON ? d.song.gain ?? 100 : 100); // 곡별 볼륨(스위치 GAIN_ON, 지금은 꺼서 모두 100) — load/play 뒤에 불러야 곡 전환 중인 소리를 건드리지 않는다
   render(player.state());
 }
 

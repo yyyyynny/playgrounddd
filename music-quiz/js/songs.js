@@ -38,6 +38,10 @@ export const SONGS = [
   { id: 32, meta: '이병우', title: '영화 장화홍련 中 돌이킬 수 없는 걸음', vid: 'oeLHy3dIiXs', start: 0, gain: 93 }
 ];
 
+// 곡별 볼륨(gain) 사용 스위치 — 지금은 꺼 둠(모든 곡 볼륨 100). 위의 gain 값은 그대로 보관 중이고,
+// 관리자님이 「켜」라고 하시면 true 로 바꾸기만 하면 된다 (2026-10-11 관리자님 지시)
+export const GAIN_ON = false;
+
 // 전체 목록 묶음 — Notion 페이지의 소제목과 같다
 export const GROUPS = [
   { label: '1 – 10', from: 1, to: 10 },
