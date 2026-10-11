@@ -27,7 +27,7 @@ export const SONGS = [
   { id: 22, meta: '존 캔더(존 칸더)', title: '뉴욕뉴욕', vid: 'LOFxFNV5DBQ', start: 12, gain: 78 },
   { id: 23, meta: '키무라 유미', title: '언제나 몇 번이라도', vid: 'mHZU4O_r6R8', start: 0, gain: 70 },
   { id: 24, meta: '하지영', title: '여행을 떠나요', vid: 'muSCAQpiebs', start: 0, gain: 70 },
-  { id: 25, meta: '에릭 사티', title: '짐노페디 1번', vid: 'M9XPfymOx3Q', start: 0, gain: 78 },
+  { id: 25, meta: '에릭 사티', title: '짐노페디 1번', vid: 'M9XPfymOx3Q', start: 0, gain: 93 },
   { id: 26, meta: '쇼스타코비치', title: '재즈모음곡 중 왈츠 2번', vid: 'gYSRrer6iO8', start: 0, gain: 78 },
   // 원본은 '4:33'. Notion 표기 '4분 33초' 도 정답으로 받으려고 괄호 대체로 둔다
   { id: 27, meta: '존 케이지', title: '4:33(4분 33초)', vid: '', start: 0 },
