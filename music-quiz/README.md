@@ -4,7 +4,7 @@
 
 ## 실행
 
-- 배포(예정): `https://yyyyynny.github.io/playgrounddd/music-quiz/` — 저장소 Pages 를 켜고 `main` 에 머지된 뒤
+- 배포: `https://yyyyynny.github.io/playgrounddd/music-quiz/` (Pages 가 `main` 루트에서 배포)
 - 로컬: 저장소 루트에서 `python3 -m http.server 8000` → `http://localhost:8000/music-quiz/`
 - `file://`(파일 더블클릭)로 열지 않는다. 모듈 스크립트와 유튜브 플레이어가 동작하지 않는다.
 
