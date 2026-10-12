@@ -1,5 +1,5 @@
 // 음악 감상 퀴즈 — 화면 상태와 이벤트
-import { SONGS, GROUPS, GAIN_ON, composerGroups } from './songs.js';
+import { SONGS, GROUPS, GAIN_ON, composerGroups, voiceGroups, missedGroups, cleanMisses } from './songs.js';
 import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
@@ -44,7 +44,8 @@ const store = {
 };
 const KEY_SELECTION = 'music-quiz:selection';
 const KEY_THEME = 'music-quiz:theme';
-const KEY_BY_COMPOSER = 'music-quiz:list-by-composer';
+const KEY_LIST_MODE = 'music-quiz:list-mode';
+const KEY_MISSES = 'music-quiz:misses';
 const KEY_SEEN = 'music-quiz:seen-version';
 
 // ── 테마 (기본 라이트) ──
@@ -167,6 +168,9 @@ let selection = new Set((store.get(KEY_SELECTION, null) || []).filter((id) => by
 if (!selection.size) selection = new Set(ALL_IDS);
 
 // missed: 이번 라운드에서 틀린 곡 · review: 틀린 곡만 다시 푸는 중 · pool: 이번 라운드의 곡 전체(다시 섞기용)
+// 틀린 기록 { 곡 번호: 틀린 횟수 } — 틀리면 늘고 맞히면 지워진다. 전체 목록의 「틀린 곡」에 쓴다
+// 라운드를 다시 시작해도, 새로고침해도 남게 브라우저에 저장한다. 저장이 지워지거나 깨지면 빈 기록으로 조용히 시작한다(cleanMisses)
+const misses = cleanMisses(store.get(KEY_MISSES, null));
 // answers: 이번 라운드에서 낸 답(틀린 내역 표시용). 라운드 안에서만 기억한다 — 새로고침하면 라운드가 새로 시작되므로 저장하지 않는다
 const quiz = { queue: [], idx: 0, answered: false, correct: 0, tried: 0, missed: new Set(), answers: new Map(), review: false, pool: [] };
 const form = $('answerForm');
@@ -306,6 +310,8 @@ function submit() {
   quiz.tried++;
   if (ok) quiz.correct++; else quiz.missed.add(song.id);
   quiz.answers.set(song.id, { meta, title, metaOk, titleOk });
+  if (ok) delete misses[song.id]; else misses[song.id] = (misses[song.id] || 0) + 1;
+  store.set(KEY_MISSES, misses);
   setAnswered(true);
   try { navigator.vibrate?.(ok ? 12 : [14, 60, 14]); } catch { /* 진동 미지원 */ }
 
@@ -472,10 +478,19 @@ function toggleInline(song, item, btn) {
 }
 
 // 목록 묶는 방식: 번호순(기본) 또는 작곡가 모아보기. 고른 쪽을 기억한다(저장이 지워지면 번호순으로 돌아갈 뿐이다)
-let byComposer = store.get(KEY_BY_COMPOSER, false) === true;
-$('listByComposer').addEventListener('click', () => {
-  byComposer = !byComposer;
-  store.set(KEY_BY_COMPOSER, byComposer);
+const LIST_MODES = {
+  number: () => GROUPS.map((x) => ({ label: x.label, songs: songsOf(x) })),
+  composer: composerGroups,
+  voice: voiceGroups,
+  missed: () => missedGroups(misses)
+};
+let listMode = store.get(KEY_LIST_MODE, 'number');
+if (!(listMode in LIST_MODES)) listMode = 'number';
+$('listModes').addEventListener('click', (e) => {
+  const mode = e.target.closest('[data-list-mode]')?.dataset.listMode;
+  if (!mode || mode === listMode) return;
+  listMode = mode;
+  store.set(KEY_LIST_MODE, mode);
   player.pause();
   renderList();
 });
@@ -484,12 +499,18 @@ function renderList() {
   closeInline();
   const body = $('listBody');
   body.replaceChildren();
-  $('listByComposer').setAttribute('aria-pressed', String(byComposer));
-  $('listByComposer').classList.toggle('is-on', byComposer);
-  for (const g of byComposer ? composerGroups() : GROUPS.map((x) => ({ label: x.label, songs: songsOf(x) }))) {
+  for (const b of $('listModes').children) {
+    const on = b.dataset.listMode === listMode;
+    b.setAttribute('aria-pressed', String(on));
+    b.classList.toggle('is-on', on);
+  }
+  const groups = LIST_MODES[listMode]();
+  if (!groups.length) body.append(h('p', { className: 'list-empty' }, '아직 틀린 곡이 없어요. 틀린 곡은 맞힐 때까지 여기에 모여요.'));
+  for (const g of groups) {
     body.append(h('h3', { className: 'group-head' }, g.label));
     for (const s of g.songs) {
       const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), songText(s));
+      if (listMode === 'missed') row.append(h('span', { className: 'no-link' }, `${misses[s.id]}번 틀림`));
       const item = h('div', { className: 'song' }, row);
       if (s.vid) {
         const btn = h('button', { type: 'button', className: 'listen-btn', 'aria-expanded': 'false' }, icon('i-play'), '듣기');
@@ -505,6 +526,7 @@ function renderList() {
 
 $('openList').addEventListener('click', () => {
   player.pause();
+  renderList(); // 틀린 기록이 바뀌었을 수 있다
   openSheet(listSheet);
 });
 listSheet.addEventListener('close', () => {

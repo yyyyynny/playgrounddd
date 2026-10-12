@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, statSync } from 'node:fs';
-import { SONGS, GAIN_ON, composerGroups } from '../js/songs.js';
+import { SONGS, GAIN_ON, composerGroups, voiceGroups, missedGroups, cleanMisses } from '../js/songs.js';
 
 test('곡 번호는 1~32 가 겹치지 않고 모두 있다', () => {
   assert.deepEqual(SONGS.map((s) => s.id), Array.from({ length: 32 }, (_, i) => i + 1));
@@ -39,4 +39,18 @@ test('작곡가 모아보기: 곡 많은 작곡가가 먼저, 마지막은 「�
   assert.equal(groups.at(-1).label, '그 밖');
   assert.ok(groups.slice(0, -1).every((g) => g.songs.length > 1 && g.songs.every((s) => s.meta === g.songs[0].meta)));
   assert.deepEqual(groups.flatMap((g) => g.songs.map((s) => s.id)).sort((a, b) => a - b), SONGS.map((s) => s.id));
+});
+
+test('노래/연주: 32곡이 한 번씩만 들어가고, 영상 없는 곡은 따로 둔다', () => {
+  const [sung, played, silent] = voiceGroups();
+  assert.equal(sung.songs.length + played.songs.length + silent.songs.length, SONGS.length);
+  assert.deepEqual(silent.songs.map((s) => s.id), [27]);
+  assert.ok(sung.songs.some((s) => s.id === 13) && played.songs.some((s) => s.id === 9)); // 마왕은 노래, 월광은 연주
+});
+
+test('틀린 곡: 많이 틀린 순으로, 깨진 저장값은 버린다', () => {
+  assert.deepEqual(missedGroups({}), []);
+  assert.deepEqual(missedGroups({ 3: 1, 9: 4, 13: 2 })[0].songs.map((s) => s.id), [9, 13, 3]);
+  assert.deepEqual(cleanMisses({ 9: 2, 13: -1, 99: 5, 3: 'x', 8: 1.5 }), { 9: 2 });
+  for (const bad of [null, undefined, 'abc', 7, []]) assert.deepEqual(cleanMisses(bad), {});
 });

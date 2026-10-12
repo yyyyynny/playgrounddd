@@ -59,3 +59,29 @@ export function composerGroups() {
     { label: '그 밖', songs: SONGS.filter((s) => by.get(s.meta).length === 1) }
   ];
 }
+
+// 노래(사람 목소리가 있는 곡) — 퀴즈에 쓰는 영상 기준. 22번 뉴욕뉴욕은 금관 합주 영상이라 연주, 27번 4:33 은 소리가 없어 어느 쪽도 아니다
+const VOCAL = new Set([1, 2, 5, 7, 8, 12, 13, 23, 24, 28, 29, 30, 31]);
+export function voiceGroups() {
+  const sung = SONGS.filter((s) => VOCAL.has(s.id));
+  const played = SONGS.filter((s) => s.vid && !VOCAL.has(s.id));
+  return [
+    { label: `노래 · ${sung.length}곡`, songs: sung },
+    { label: `연주 · ${played.length}곡`, songs: played },
+    { label: '소리 없음', songs: SONGS.filter((s) => !s.vid) }
+  ];
+}
+
+// 틀린 곡 묶음 — misses: { 곡 번호: 틀린 횟수 }. 많이 틀린 순(같으면 번호순). 기록이 없으면 빈 배열
+export function missedGroups(misses) {
+  const songs = SONGS.filter((s) => misses[s.id] > 0).sort((a, b) => misses[b.id] - misses[a.id]);
+  return songs.length ? [{ label: `틀린 곡 · ${songs.length}곡`, songs }] : [];
+}
+
+// 저장해 둔 틀린 기록을 믿을 수 있는 값만 남겨 되살린다 — 깨졌거나 다른 모양이면 빈 기록으로 시작(오류를 내지 않는다)
+export function cleanMisses(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const s of SONGS) if (Number.isInteger(raw[s.id]) && raw[s.id] > 0) out[s.id] = raw[s.id];
+  return out;
+}
