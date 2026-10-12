@@ -329,11 +329,12 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   transition: transform var(--t-sheet) var(--ease-spring);
 }
 .sheet[open] { display: flex; }
-.sheet.is-closing { transform: translateY(105%); }
+/* 화면 높이만큼 내려 보낸다 — 자기 높이(105%)만큼만 내리면, 가운데에 뜨는 넓은 화면에서는 머리가 화면에 남았다가 닫히는 순간 툭 사라진다 */
+.sheet.is-closing { transform: translateY(100dvh); }
 .sheet::backdrop { background: var(--backdrop); transition: opacity var(--t-sheet) var(--ease-spring); }
 .sheet.is-closing::backdrop { opacity: 0; }
 @starting-style {
-  .sheet[open] { transform: translateY(105%); }
+  .sheet[open] { transform: translateY(100dvh); }
   .sheet[open]::backdrop { opacity: 0; }
 }
 @media (min-width: 560px) { .sheet { margin: auto; border-radius: var(--r-card); max-height: 82dvh; } }
@@ -402,6 +403,18 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   .egg-video { width: min(100%, calc((var(--app-h, 100dvh) - 66px) * 16 / 9)); }
 }
 
+/* 새 판 알림 막대 — 화면 아래에 떠 있는 반투명 재질. 흐름을 막지 않게 어둡게 깔지 않는다 */
+.update-bar {
+  position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); translate: -50% 0; z-index: 5;
+  display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 16px; white-space: nowrap;
+  border-radius: var(--r-pill); background: var(--material); color: var(--ink); box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  font-size: .88rem; font-weight: 600;
+  transition: opacity var(--t-mid) var(--ease-out), translate var(--t-mid) var(--ease-spring);
+}
+.update-bar[hidden] { display: none; }
+@starting-style { .update-bar { opacity: 0; translate: -50% 12px; } }
+
 /* 업데이트 내역 */
 .news-list { margin: 0; padding-left: 1.15em; line-height: 1.55; font-size: .92rem; }
 .news-list li + li { margin-top: 6px; }
@@ -409,6 +422,11 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 /* 노션 느낌 목록 — 작곡가 → 작품명 순 */
 .group-head { font-size: .78rem; font-weight: 700; letter-spacing: .01em; color: var(--muted); margin: 18px 0 4px; }
 .group-head:first-child { margin-top: 4px; }
+/* 내용이 담긴 묶음 제목(작곡가 · 노래/연주) — 크기와 굵기로 위계를 만든다. 큰 글자는 자간을 조인다 */
+.group-head.is-strong { display: flex; align-items: baseline; gap: 8px; margin-top: 24px; font-size: 1.12rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; color: var(--ink); }
+.group-head.is-strong:first-child { margin-top: 6px; }
+.group-head.is-strong span { font-size: .78rem; font-weight: 600; letter-spacing: .01em; color: var(--muted); }
+.song.same-meta .song-meta { display: none; }
 .song { border-bottom: 1px solid var(--line); }
 .song-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; }
 .song-num { flex: none; width: 24px; font-size: .8rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -460,7 +478,7 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; }
   .cover::after { animation: none; }
-  .egg-list, .egg-bar svg { transition: none; }
+  .egg-list, .egg-bar svg, .update-bar { transition: none; }
   .sheet, .sheet.is-closing { transform: none !important; transition: opacity 200ms ease; }
   .sheet.is-closing { opacity: 0; }
   @starting-style { .sheet[open] { opacity: 0; } }

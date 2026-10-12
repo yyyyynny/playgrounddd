@@ -3,10 +3,16 @@
 //
 // 판을 올릴 때: APP_VERSION 을 올리고 CHANGELOG 맨 앞에 그 판을 넣는다(풀이하는 사람이 읽을 말로, 한 줄씩)
 // 형식은 날짜(YYYY.MM.DD[-N]). 새것인지는 문자열 크기가 아니라 이 목록에서의 위치로 본다('-10' < '-9' 문제)
-export const APP_VERSION = '2026.10.13';
+export const APP_VERSION = '2026.10.13-2';
 
 // 최근 것이 위로. 숨은 기능(이스터에그)은 적지 않는다
 export const CHANGELOG = [
+  { v: '2026.10.13-2', lines: [
+    '작곡가 · 노래/연주로 묶어 볼 때 묶음 이름이 크게 보여요.',
+    '컴퓨터에서 창을 닫을 때 윗부분이 남았다가 툭 사라지던 것을 고쳤어요.',
+    '이스터에그 일부 수정(찾기 쉬움)',
+    '창을 열어 둔 채로 있어도 새 판이 올라오면 아래에 알려드려요. 새로고침은 누를 때만 해요.'
+  ] },
   { v: '2026.10.13', lines: [
     '키보드만으로 풀 수 있어요 — 스페이스로 재생·일시정지, 엔터로 제출하고 다음 문제로 넘어가요.',
     '재생을 누르면 바로 답 칸으로 커서가 가요.',
@@ -32,3 +38,6 @@ export function changesSince(seen) {
   const idx = CHANGELOG.findIndex((c) => c.v === seen);
   return idx === -1 ? CHANGELOG.slice(0, 1) : CHANGELOG.slice(0, idx);
 }
+
+// 서버에 올라와 있는 version.js 본문에서 판 번호를 읽는다(열어 둔 탭이 새 판을 알아채는 데 쓴다). 못 읽으면 null
+export const versionIn = (text) => /APP_VERSION = '([^']+)'/.exec(String(text))?.[1] ?? null;
