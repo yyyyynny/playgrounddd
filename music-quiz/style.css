@@ -189,7 +189,33 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
     radial-gradient(circle at 50% 50%, var(--surface) 0 17%, transparent 17.5%),
     var(--accent-soft);
   display: grid; place-content: center; text-align: center;
+  border: 0; padding: 0; font: inherit; color: inherit; /* button 기본 모양 지우기 */
 }
+.cover:enabled { cursor: zoom-in; transition: transform var(--t-press) ease-out; }
+.cover:enabled:active { transform: scale(.97); }
+/* 크게 보기 — 그림이 음반 자리에서 커져 나온다(app.js 가 시작 · 끝 변형을 넣는다). 넘침 없는 감쇠 곡선, 뒤는 어둡게 */
+.zoom {
+  position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none;
+  margin: 0; padding: 0; border: 0; background: none; overflow: hidden;
+  display: none; place-items: center;
+}
+.zoom[open] { display: grid; }
+.zoom::backdrop { background: var(--backdrop); opacity: 0; transition: opacity var(--t-mid) var(--ease-out); }
+.zoom.is-in::backdrop { opacity: 1; }
+.zoom-hit {
+  display: grid; justify-items: center; gap: 14px; width: 100%; height: 100%; place-content: center;
+  border: 0; padding: 0; background: none; font: inherit; color: #fff; cursor: zoom-out;
+}
+.zoom img {
+  display: block; width: min(92vw, 68dvh, 480px); aspect-ratio: 1; object-fit: cover;
+  border-radius: var(--r-card); box-shadow: var(--shadow-lg); transform-origin: 0 0;
+  transition: transform var(--t-sheet) var(--ease-spring), border-radius var(--t-sheet) var(--ease-spring);
+}
+.zoom span {
+  max-width: min(92vw, 480px); font-size: .95rem; font-weight: 700; line-height: 1.35; text-align: center; overflow-wrap: anywhere;
+  opacity: 0; transition: opacity var(--t-fast) var(--ease-out);
+}
+.zoom.is-in span { opacity: 1; transition-delay: 120ms; }
 .cover::after {
   content: ""; position: absolute; inset: -30%;
   background: conic-gradient(from 0deg, transparent 0 20%, var(--sheen) 26%, transparent 34% 70%, color-mix(in srgb, var(--sheen) 60%, transparent) 76%, transparent 84%);
@@ -455,8 +481,12 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   display: flex; align-items: center; gap: 10px;
   margin: 0 0 12px 34px; padding: 8px 12px 6px 8px;
   background: color-mix(in srgb, var(--surface-2) 85%, transparent); border-radius: var(--r-mid);
-  animation: rise var(--t-mid) var(--ease-spring);
 }
+/* 펼친 재생기: 높이 0 에서 열리고 같은 길로 접힌다(아래 줄들이 툭 밀리지 않게) */
+.inline-wrap { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows var(--t-mid) var(--ease-spring), opacity var(--t-fast) var(--ease-out); }
+.inline-clip { min-height: 0; overflow: hidden; }
+@starting-style { .inline-wrap { grid-template-rows: 0fr; opacity: 0; } }
+.inline-wrap.is-closing { grid-template-rows: 0fr; opacity: 0; }
 .inline-player .mini-play {
   flex: none; display: grid; place-items: center;
   width: 40px; height: 40px; border-radius: 50%; border: 0;
@@ -478,7 +508,7 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; }
   .cover::after { animation: none; }
-  .egg-list, .egg-bar svg, .update-bar { transition: none; }
+  .egg-list, .egg-bar svg, .update-bar, .zoom img, .inline-wrap { transition: none; }
   .sheet, .sheet.is-closing { transform: none !important; transition: opacity 200ms ease; }
   .sheet.is-closing { opacity: 0; }
   @starting-style { .sheet[open] { opacity: 0; } }

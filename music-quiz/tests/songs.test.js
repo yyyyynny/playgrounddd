@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, statSync } from 'node:fs';
-import { SONGS, GAIN_ON, composerGroups, voiceGroups, applyAnswer, cleanRecord, missedSongs } from '../js/songs.js';
+import { SONGS, GAIN_ON, composerGroups, voiceGroups, applyAnswer, cleanRecord, missedSongs, similarGroups } from '../js/songs.js';
 
 test('곡 번호는 1~32 가 겹치지 않고 모두 있다', () => {
   assert.deepEqual(SONGS.map((s) => s.id), Array.from({ length: 32 }, (_, i) => i + 1));
@@ -64,4 +64,11 @@ test('틀린 기록: 깨진 저장값은 버린다', () => {
   assert.deepEqual(cleanRecord({ 9: ok, 99: ok, 13: { debt: -1, wrong: 'x', tried: 2 }, 3: 5, 8: { debt: 9, wrong: 1, tried: 1, last: 7 } }),
     { 9: ok, 13: { debt: 0, wrong: 0, tried: 2 }, 8: { debt: 1, wrong: 1, tried: 1 } });
   for (const bad of [null, undefined, 'abc', 7, []]) assert.deepEqual(cleanRecord(bad), {});
+});
+
+test('비슷한 곡: 묶음마다 실제 곡이 둘 이상이고 한 묶음 안에서 겹치지 않는다', () => {
+  for (const g of similarGroups()) {
+    assert.ok(g.songs.length >= 2 && g.songs.every(Boolean), g.label);
+    assert.equal(new Set(g.songs.map((s) => s.id)).size, g.songs.length, g.label);
+  }
 });

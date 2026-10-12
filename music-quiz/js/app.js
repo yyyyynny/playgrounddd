@@ -1,5 +1,5 @@
 // 음악 감상 퀴즈 — 화면 상태와 이벤트
-import { SONGS, GROUPS, GAIN_ON, composerGroups, voiceGroups, applyAnswer, cleanRecord, missedSongs } from './songs.js';
+import { SONGS, GROUPS, GAIN_ON, composerGroups, voiceGroups, similarGroups, applyAnswer, cleanRecord, missedSongs } from './songs.js';
 import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
@@ -158,7 +158,50 @@ document.addEventListener('click', (e) => { // 키보드(Enter · Space)로 누�
   setTimeout(() => btn.classList.remove('is-pressed'), MIN_PRESS + 80);
 });
 
-$('coverImg').addEventListener('error', (e) => { e.target.hidden = true; });
+$('coverImg').addEventListener('error', (e) => { e.target.hidden = true; $('cover').disabled = true; });
+// 드러난 곡 이미지를 누르면 크게 본다 — 그림이 음반 자리에서 커져 나오고, 닫으면 그 자리로 돌아간다(나온 곳으로 돌아가야 어디서 왔는지 이어진다)
+const imgView = $('imgView');
+const imgBig = $('imgBig');
+let imgHome = null; // 다 커졌을 때의 자리(변형 전 사각형)
+// 큰 그림을 음반 자리에 딱 겹치게 하는 변형. 줄어든 만큼 모서리 둥글기를 키워 음반 자리의 둥글기와 맞춘다
+function overCover() {
+  const c = $('cover').getBoundingClientRect();
+  const k = c.width / imgHome.width;
+  imgBig.style.borderRadius = `${parseFloat(getComputedStyle($('cover')).borderRadius) / k}px`;
+  imgBig.style.transform = `translate(${c.left - imgHome.left}px, ${c.top - imgHome.top}px) scale(${k})`;
+}
+$('cover').addEventListener('click', () => {
+  const s = quizDeck.song;
+  $('imgTitle').textContent = `${s.meta} – ${s.title}`;
+  imgBig.src = $('coverImg').src;
+  imgView.showModal();
+  imgBig.style.transition = 'none';
+  imgBig.style.transform = imgBig.style.borderRadius = '';
+  imgHome = imgBig.getBoundingClientRect();
+  overCover();                              // 음반 자리에서 시작해서
+  $('cover').style.visibility = 'hidden';   // (같은 그림이 둘로 보이지 않게)
+  void imgBig.offsetWidth;
+  imgBig.style.transition = '';
+  imgBig.style.transform = imgBig.style.borderRadius = ''; // 제자리로 커진다
+  imgView.classList.add('is-in');
+});
+function closeImg() {
+  if (!imgView.open || !imgView.classList.contains('is-in')) return;
+  imgView.classList.remove('is-in');
+  overCover(); // 지금 보이는 크기에서 이어서 음반 자리로 줄어든다
+  let timer = 0;
+  const done = () => {
+    clearTimeout(timer);
+    imgBig.removeEventListener('transitionend', onEnd);
+    $('cover').style.visibility = '';
+    imgView.close();
+  };
+  const onEnd = (e) => { if (e.propertyName === 'transform') done(); };
+  imgBig.addEventListener('transitionend', onEnd);
+  timer = setTimeout(done, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 700); // 전환이 없을 때 대비
+}
+imgView.addEventListener('click', closeImg);
+imgView.addEventListener('cancel', (e) => { e.preventDefault(); closeImg(); }); // Esc
 $('quizRestart').addEventListener('click', () => player.restart());
 $('quizFwd').addEventListener('click', () => {
   player.seek((player.time().current || quizDeck.song.start) + 10);
@@ -188,6 +231,7 @@ function setAnswered(on) {
   quiz.answered = on;
   form.classList.toggle('is-answered', on);
   $('cover').classList.toggle('is-revealed', on); // 제출하면 숫자 자리에 곡 이미지가 드러난다
+  $('cover').disabled = !on || $('coverImg').hidden; // 드러난 동안만 눌러서 크게 볼 수 있다(이미지 파일이 없으면 못 누름)
   inMeta.disabled = inTitle.disabled = on;
   const label = quiz.idx + 1 < quiz.queue.length ? '다음 문제' : '결과 보기';
   $('nextLabel').textContent = label;
@@ -259,7 +303,7 @@ function marked(chars, oks, cls) {
   const out = h('span');
   let run = '', runOk = true;
   const flush = () => {
-    if (run) out.append(runOk ? run : h('span', { className: cls }, run));
+    if (run) out.append(runOk ? run : h('span', { className: cls }, run.replace(/\s/g, '␣'))); // 틀린 띄어쓰기는 눈에 보이게
     run = '';
   };
   chars.forEach((ch, i) => {
@@ -340,12 +384,17 @@ function submit() {
 function goNext() {
   quiz.idx++;
   showQuestion();
-  if (!$('quizActive').hidden) $('quizPlay').focus({ preventScroll: true });
+  // 영상 없는 곡은 재생 버튼이 꺼져 있어 초점이 「다음 문제」 버튼에 남는다 — 거기서 엔터를 누르면 빈 답이 제출되므로 답 칸으로 보낸다
+  if (!$('quizActive').hidden) ($('quizPlay').disabled ? inMeta : $('quizPlay')).focus({ preventScroll: true });
 }
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   if (quiz.answered) goNext(); else submit();
+});
+// 두 칸이 다 빈 채로 답 칸에서 누른 엔터는 제출하지 않는다(실수로 오답 처리되는 것 방지). 빈 답은 화살표 버튼으로 낸다
+form.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches('input') && !inMeta.value.trim() && !inTitle.value.trim()) e.preventDefault();
 });
 // 앞 칸에서 Enter: 작품명이 비어 있으면 작품명 칸으로 넘어간다
 inMeta.addEventListener('keydown', (e) => {
@@ -430,7 +479,7 @@ function enableSheetDrag(dlg) {
   head.addEventListener('pointercancel', end);
 }
 
-for (const dlg of document.querySelectorAll('dialog')) {
+for (const dlg of document.querySelectorAll('dialog.sheet')) {
   dlg.querySelector('[data-close]').addEventListener('click', () => closeSheet(dlg));
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); dismiss(dlg); }); // Esc
   dlg.addEventListener('click', (e) => {
@@ -454,16 +503,20 @@ function songText(s) {
 const listSheet = $('listSheet');
 let inline = null; // 펼친 행 { song, btn, el, deck }
 
+// 펼친 재생기는 높이가 0 에서 열리고 같은 길로 접힌다 — 툭 나타나고 툭 사라지면 아래 줄들이 한꺼번에 밀려 어색하다
 function closeInline() {
   if (!inline) return;
-  inline.deck.wave.destroy();
-  inline.el.remove();
+  const { el, deck: d } = inline;
   inline.btn.setAttribute('aria-expanded', 'false');
   inline = null;
+  el.inert = true;
+  el.classList.add('is-closing');
+  setTimeout(() => { d.wave.destroy(); el.remove(); }, INLINE_CLOSE_MS); // 접힌 뒤에 치운다
 }
+const INLINE_CLOSE_MS = 360; // style.css 의 --t-mid(320ms)보다 조금 길게
 
 function toggleInline(song, item, btn) {
-  const same = inline && inline.song.id === song.id;
+  const same = inline && inline.btn === btn; // 같은 곡이 여러 묶음에 나올 수 있어 곡이 아니라 누른 줄로 가린다
   closeInline();
   if (same) { player.pause(); return; }
 
@@ -472,8 +525,9 @@ function toggleInline(song, item, btn) {
   const cur = h('span', {}, '0:00');
   const dur = h('span', {}, '--:--');
   const msg = h('p', { className: 'player-msg', role: 'status' });
-  const el = h('div', { className: 'inline-player' }, playBtn,
-    h('div', { className: 'inline-track' }, waveEl, h('div', { className: 'times' }, cur, dur), msg));
+  const el = h('div', { className: 'inline-wrap' }, h('div', { className: 'inline-clip' },
+    h('div', { className: 'inline-player' }, playBtn,
+      h('div', { className: 'inline-track' }, waveEl, h('div', { className: 'times' }, cur, dur), msg))));
   item.append(el);
   btn.setAttribute('aria-expanded', 'true');
 
@@ -486,7 +540,8 @@ function toggleInline(song, item, btn) {
 const LIST_MODES = {
   number: () => GROUPS.map((x) => ({ label: x.label, songs: songsOf(x) })),
   composer: composerGroups,
-  voice: voiceGroups
+  voice: voiceGroups,
+  similar: similarGroups
 };
 let listMode = store.get(KEY_LIST_MODE, 'number');
 if (!(listMode in LIST_MODES)) listMode = 'number';
@@ -511,7 +566,9 @@ function renderList() {
   const groups = LIST_MODES[listMode]();
   for (const g of groups) {
     // 작곡가 · 노래/연주 묶음은 제목이 곧 정보라 크게 쓴다(이름은 진하게, 곡 수는 옅게). 번호순 묶음은 구분선 구실만 한다
-    const [name, count] = g.label.split(' · ');
+    // 곡 수는 마지막 가운뎃점 뒤에 있다(「합창 · 종교 음악 · 4곡」처럼 이름에도 가운뎃점이 올 수 있다)
+    const cut = /곡$/.test(g.label) ? g.label.lastIndexOf(' · ') : -1;
+    const [name, count] = cut < 0 ? [g.label, ''] : [g.label.slice(0, cut), g.label.slice(cut + 3)];
     body.append(listMode === 'number'
       ? h('h3', { className: 'group-head' }, g.label)
       : h('h3', { className: 'group-head is-strong' }, name, count ? h('span', {}, count) : ''));
