@@ -348,8 +348,19 @@ function closeSheet(dlg) {
 const rubber = (over, dim) => (over * dim * 0.55) / (dim + 0.55 * over);
 const project = (v) => (v / 1000) * 0.998 / (1 - 0.998);
 
+// 잠긴 시트(data-locked)는 닫기 버튼으로만 닫힌다 — 바깥 클릭 · Esc · 끌어내리기는 진동과 함께 흔들리고 제자리에 남는다
+const isLocked = (dlg) => 'locked' in dlg.dataset;
+function refuse(dlg) {
+  try { navigator.vibrate?.([14, 60, 14]); } catch { /* 진동 미지원 */ }
+  dlg.classList.remove('is-refused');
+  void dlg.offsetWidth; // 연달아 눌러도 다시 흔들리게
+  dlg.classList.add('is-refused');
+}
+const dismiss = (dlg) => (isLocked(dlg) ? refuse(dlg) : closeSheet(dlg));
+
 function enableSheetDrag(dlg) {
   const head = dlg.querySelector('.sheet-head');
+  const locked = isLocked(dlg);
   let y0 = 0, dy = 0, hist = null;
   head.addEventListener('pointerdown', (e) => {
     if (e.target.closest('button') || dlg.classList.contains('is-closing')) return;
@@ -362,7 +373,8 @@ function enableSheetDrag(dlg) {
   head.addEventListener('pointermove', (e) => {
     if (!hist) return;
     const raw = e.clientY - y0;
-    dy = raw >= 0 ? raw : -rubber(-raw, dlg.offsetHeight);
+    // 위로는 늘 고무줄, 잠긴 시트는 아래로도 고무줄(끌려 내려가지 않는다)
+    dy = raw >= 0 && !locked ? raw : Math.sign(raw) * rubber(Math.abs(raw), dlg.offsetHeight);
     dlg.style.transform = `translateY(${dy}px)`;
     hist.push({ y: e.clientY, t: e.timeStamp });
     if (hist.length > 5) hist.shift();
@@ -372,7 +384,8 @@ function enableSheetDrag(dlg) {
     const a = hist[0], b = hist[hist.length - 1];
     const v = b.t > a.t ? ((b.y - a.y) / (b.t - a.t)) * 1000 : 0;
     hist = null;
-    if (dy + project(v) > dlg.offsetHeight * 0.45) { closeSheet(dlg); return; }
+    if (!locked && dy + project(v) > dlg.offsetHeight * 0.45) { closeSheet(dlg); return; }
+    if (locked && dy > 8) { try { navigator.vibrate?.([14, 60, 14]); } catch { /* 진동 미지원 */ } }
     dlg.style.transition = '';
     dlg.style.transform = ''; // 제자리로 (현재 위치에서 이어서)
   };
@@ -382,11 +395,11 @@ function enableSheetDrag(dlg) {
 
 for (const dlg of document.querySelectorAll('dialog')) {
   dlg.querySelector('[data-close]').addEventListener('click', () => closeSheet(dlg));
-  dlg.addEventListener('cancel', (e) => { e.preventDefault(); closeSheet(dlg); }); // Esc
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); dismiss(dlg); }); // Esc
   dlg.addEventListener('click', (e) => {
     const r = dlg.getBoundingClientRect();
     const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-    if (!inside) closeSheet(dlg);
+    if (!inside) dismiss(dlg);
   });
   enableSheetDrag(dlg);
 }
@@ -525,7 +538,26 @@ window.addEventListener('beforeunload', (e) => {
   e.returnValue = ''; // 일부 브라우저는 이 값이 있어야 확인 창을 띄운다
 });
 
+// ── 실제로 보이는 화면 크기(px)를 CSS 변수(--app-w · --app-h)로 둔다 — ence 저장소 setupViewportVars 를 줄여 옮김 ──
+// 모바일 주소창 때문에 vh 가 실제와 어긋나고, 화면을 돌리면 값이 여러 번 바뀐다. 150ms 잠잠해진 뒤 한 번만 반영한다
+function trackViewport() {
+  let timer = 0;
+  const apply = () => {
+    const vv = window.visualViewport;
+    if (vv && vv.scale > 1.001) return; // 핀치 확대 중에는 보이는 영역만 좁아진 것, 화면 크기가 바뀐 게 아니다
+    const root = document.documentElement.style;
+    root.setProperty('--app-w', `${Math.round(vv ? vv.width : innerWidth)}px`);
+    root.setProperty('--app-h', `${Math.round(vv ? vv.height : innerHeight)}px`);
+  };
+  const update = () => { clearTimeout(timer); timer = setTimeout(apply, 150); };
+  apply();
+  addEventListener('resize', update);
+  addEventListener('orientationchange', update);
+  window.visualViewport?.addEventListener('resize', update);
+}
+
 // ── 시작 ──
+trackViewport();
 renderList();
 updateFocusLabel();
 player.subscribe(render);
