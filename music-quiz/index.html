@@ -26,6 +26,7 @@
   <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M4 7h3.5c2 0 3 1 4.5 5s2.5 5 4.5 5H20M4 17h3.5c1.2 0 2-.4 2.7-1.3M13.8 8.3C14.5 7.4 15.3 7 16.5 7H20M17.5 4.5 20 7l-2.5 2.5M17.5 14.5 20 17l-2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1Z" fill="currentColor"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 2H5l1.5-2ZM10 20.5a2.2 2.2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 </svg>
 
@@ -34,6 +35,9 @@
     <h1 class="brand">감상 퀴즈</h1>
     <div class="topbar-right">
       <span class="score" id="score" aria-live="polite"></span>
+      <button class="icon-btn" id="openNews" type="button" aria-label="업데이트 내역">
+        <svg aria-hidden="true"><use href="#i-bell"/></svg>
+      </button>
       <button class="icon-btn" id="themeBtn" type="button" aria-label="다크 모드로 전환">
         <svg aria-hidden="true"><use href="#i-moon"/></svg>
       </button>
@@ -103,6 +107,14 @@
     <button class="icon-btn" type="button" data-close aria-label="닫기"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
   </div>
   <div class="sheet-body" id="listBody"></div>
+</dialog>
+
+<dialog class="sheet" id="newsSheet" aria-labelledby="newsTitle">
+  <div class="sheet-head" title="끌어 내려 닫기">
+    <h2 id="newsTitle"></h2>
+    <button class="icon-btn" type="button" data-close aria-label="닫기"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+  </div>
+  <div class="sheet-body" id="newsBody"></div>
 </dialog>
 
 <dialog class="sheet" id="focusSheet" aria-labelledby="focusTitle">

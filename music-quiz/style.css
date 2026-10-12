@@ -369,6 +369,10 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   .egg-video { width: min(100%, calc((var(--app-h, 100dvh) - 66px) * 16 / 9)); }
 }
 
+/* 업데이트 내역 */
+.news-list { margin: 0; padding-left: 1.15em; line-height: 1.55; font-size: .92rem; }
+.news-list li + li { margin-top: 6px; }
+
 /* 노션 느낌 목록 — 작곡가 → 작품명 순 */
 .group-head { font-size: .78rem; font-weight: 700; letter-spacing: .01em; color: var(--muted); margin: 18px 0 4px; }
 .group-head:first-child { margin-top: 4px; }

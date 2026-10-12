@@ -4,6 +4,7 @@ import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
 import { initEgg } from './egg.js';
+import { APP_VERSION, CHANGELOG, changesSince } from './version.js';
 
 const $ = (id) => document.getElementById(id);
 const byId = new Map(SONGS.map((s) => [s.id, s]));
@@ -43,6 +44,7 @@ const store = {
 };
 const KEY_SELECTION = 'music-quiz:selection';
 const KEY_THEME = 'music-quiz:theme';
+const KEY_SEEN = 'music-quiz:seen-version';
 
 // ── 테마 (기본 라이트) ──
 function applyTheme(t) {
@@ -529,6 +531,44 @@ $('focusStart').addEventListener('click', () => {
   newRound();
 });
 
+// ── 업데이트 알림: 새 판이면 그 사이 바뀐 것을 한 번 띄운다. 종 버튼은 전체 내역 (내용은 js/version.js) ──
+function showNews(entries, title) {
+  $('newsTitle').textContent = title;
+  $('newsBody').replaceChildren(...entries.flatMap((c) => [
+    h('h3', { className: 'group-head' }, c.v),
+    h('ul', { className: 'news-list' }, ...c.lines.map((l) => h('li', {}, l)))
+  ]));
+  openSheet($('newsSheet'));
+}
+$('openNews').addEventListener('click', () => showNews(CHANGELOG, '업데이트 내역'));
+
+// ── 키보드: 마우스 없이 풀기 ──
+// 스페이스 = 재생·일시정지, 엔터 = 제출·다음 문제(답 칸 · 버튼 위에서는 브라우저 기본 동작이 이미 그렇게 한다)
+document.addEventListener('keydown', (e) => {
+  if (e.isComposing || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (document.querySelector('dialog[open]') || $('quizActive').hidden) return;
+  const el = e.target;
+  if (e.code === 'Space') {
+    // 버튼 · 슬라이더 위에서는 기본 동작에 맡긴다. 답 칸에서는 비어 있을 때만 — 글자 사이 띄어쓰기는 그대로 입력돼야 한다
+    // ponytail: 한계 — 답을 치는 중에는 스페이스로 멈출 수 없다(Tab 으로 재생 버튼에 가서 누른다). 필요하면 전용 단축키 추가
+    if (el.matches('button, [role="slider"]') || (el.matches('input') && el.value)) return;
+    e.preventDefault();
+    $('quizPlay').click();
+  } else if (e.key === 'Enter' && el === document.body) {
+    // 아무 데도 초점이 없을 때: 채점이 끝났으면 다음 문제, 아니면 빈 답이 제출되지 않게 답 칸으로만 간다
+    e.preventDefault();
+    if (quiz.answered) goNext(); else focusAnswer();
+  }
+});
+// 재생을 시작하면 바로 답을 칠 수 있게 빈 칸으로 간다
+function focusAnswer() {
+  (inMeta.value.trim() && !inTitle.value.trim() ? inTitle : inMeta).focus({ preventScroll: true });
+}
+$('quizPlay').addEventListener('click', () => {
+  const s = player.state();
+  if (!quiz.answered && (s.playing || s.buffering)) focusAnswer();
+});
+
 // ── 새로고침 방지: 풀던 중에 새로고침 · 닫기 · 뒤로 가기를 하면 한 번 묻는다 ──
 // (모바일 당겨서 새로고침은 style.css 의 overscroll-behavior 로 막는다)
 window.addEventListener('beforeunload', (e) => {
@@ -564,3 +604,8 @@ player.subscribe(render);
 player.init('yt');
 initEgg({ sheet: $('eggSheet'), trigger: document.querySelector('.brand'), open: openSheet, onOpen: () => player.pause() });
 newRound();
+{
+  const news = changesSince(store.get(KEY_SEEN, null));
+  store.set(KEY_SEEN, APP_VERSION);
+  if (news.length) showNews(news, '새로 바뀐 것');
+}
