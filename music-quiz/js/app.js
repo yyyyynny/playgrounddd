@@ -731,7 +731,7 @@ function showNews(entries, title) {
 }
 $('openNews').addEventListener('click', () => showNews(CHANGELOG, '업데이트 내역'));
 
-// ── 열어 둔 탭에서도 새 판 알아채기: 탭으로 돌아올 때 서버의 version.js 를 확인하고, 판이 다르면 알림 막대를 띄운다 ──
+// ── 열어 둔 탭에서도 새 판 알아채기: 탭으로 돌아올 때와 3분마다 서버의 version.js 를 확인하고, 판이 다르면 알림 막대를 띄운다 ──
 // 풀던 중에 화면이 저절로 바뀌면 안 되므로 새로고침은 누를 때만 한다
 const VERSION_CHECK_GAP = 60000; // 확인 간격(ms) — 탭을 자주 오가도 요청은 1분에 한 번
 // ponytail: 한계 — 새로고침 전에 다시 받아 둘 파일을 손으로 적어 둔다(브라우저가 옛 파일을 계속 쓰지 않게). 파일을 더하면 여기도 더한다
@@ -751,6 +751,7 @@ async function checkNewVersion() {
 }
 document.addEventListener('visibilitychange', checkNewVersion);
 window.addEventListener('focus', checkNewVersion);
+setInterval(checkNewVersion, 180000); // 탭을 켜 둔 채 가만히 있어도 3분마다 본다(화면에 보일 때만)
 $('updateDismiss').addEventListener('click', () => {
   dismissedVersion = $('updateBar').dataset.version; // 이 판은 다시 묻지 않는다(더 새 판이 나오면 다시 뜬다)
   $('updateBar').hidden = true;
