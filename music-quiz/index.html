@@ -133,12 +133,12 @@
   </div>
 </dialog>
 
-<dialog class="sheet" id="imgSheet" aria-labelledby="imgTitle">
-  <div class="sheet-head" title="끌어 내려 닫기">
-    <h2 id="imgTitle"></h2>
-    <button class="icon-btn" type="button" data-close aria-label="닫기"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
-  </div>
-  <div class="sheet-body"><img class="img-big" id="imgBig" alt=""></div>
+<!-- 곡 이미지 크게 보기: 음반 자리에서 커져 나오고 그 자리로 돌아간다. 아무 데나 누르거나 Esc 로 닫는다 -->
+<dialog class="zoom" id="imgView" aria-labelledby="imgTitle">
+  <button class="zoom-hit" type="button" aria-label="닫기">
+    <img id="imgBig" alt="">
+    <span id="imgTitle"></span>
+  </button>
 </dialog>
 
 <dialog class="sheet" id="newsSheet" aria-labelledby="newsTitle">

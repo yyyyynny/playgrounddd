@@ -159,13 +159,49 @@ document.addEventListener('click', (e) => { // 키보드(Enter · Space)로 누�
 });
 
 $('coverImg').addEventListener('error', (e) => { e.target.hidden = true; $('cover').disabled = true; });
-// 드러난 곡 이미지를 누르면 시트에서 크게 본다
+// 드러난 곡 이미지를 누르면 크게 본다 — 그림이 음반 자리에서 커져 나오고, 닫으면 그 자리로 돌아간다(나온 곳으로 돌아가야 어디서 왔는지 이어진다)
+const imgView = $('imgView');
+const imgBig = $('imgBig');
+let imgHome = null; // 다 커졌을 때의 자리(변형 전 사각형)
+// 큰 그림을 음반 자리에 딱 겹치게 하는 변형. 줄어든 만큼 모서리 둥글기를 키워 음반 자리의 둥글기와 맞춘다
+function overCover() {
+  const c = $('cover').getBoundingClientRect();
+  const k = c.width / imgHome.width;
+  imgBig.style.borderRadius = `${parseFloat(getComputedStyle($('cover')).borderRadius) / k}px`;
+  imgBig.style.transform = `translate(${c.left - imgHome.left}px, ${c.top - imgHome.top}px) scale(${k})`;
+}
 $('cover').addEventListener('click', () => {
   const s = quizDeck.song;
   $('imgTitle').textContent = `${s.meta} – ${s.title}`;
-  $('imgBig').src = $('coverImg').src;
-  openSheet($('imgSheet'));
+  imgBig.src = $('coverImg').src;
+  imgView.showModal();
+  imgBig.style.transition = 'none';
+  imgBig.style.transform = imgBig.style.borderRadius = '';
+  imgHome = imgBig.getBoundingClientRect();
+  overCover();                              // 음반 자리에서 시작해서
+  $('cover').style.visibility = 'hidden';   // (같은 그림이 둘로 보이지 않게)
+  void imgBig.offsetWidth;
+  imgBig.style.transition = '';
+  imgBig.style.transform = imgBig.style.borderRadius = ''; // 제자리로 커진다
+  imgView.classList.add('is-in');
 });
+function closeImg() {
+  if (!imgView.open || !imgView.classList.contains('is-in')) return;
+  imgView.classList.remove('is-in');
+  overCover(); // 지금 보이는 크기에서 이어서 음반 자리로 줄어든다
+  let timer = 0;
+  const done = () => {
+    clearTimeout(timer);
+    imgBig.removeEventListener('transitionend', onEnd);
+    $('cover').style.visibility = '';
+    imgView.close();
+  };
+  const onEnd = (e) => { if (e.propertyName === 'transform') done(); };
+  imgBig.addEventListener('transitionend', onEnd);
+  timer = setTimeout(done, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 700); // 전환이 없을 때 대비
+}
+imgView.addEventListener('click', closeImg);
+imgView.addEventListener('cancel', (e) => { e.preventDefault(); closeImg(); }); // Esc
 $('quizRestart').addEventListener('click', () => player.restart());
 $('quizFwd').addEventListener('click', () => {
   player.seek((player.time().current || quizDeck.song.start) + 10);
@@ -443,7 +479,7 @@ function enableSheetDrag(dlg) {
   head.addEventListener('pointercancel', end);
 }
 
-for (const dlg of document.querySelectorAll('dialog')) {
+for (const dlg of document.querySelectorAll('dialog.sheet')) {
   dlg.querySelector('[data-close]').addEventListener('click', () => closeSheet(dlg));
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); dismiss(dlg); }); // Esc
   dlg.addEventListener('click', (e) => {
@@ -467,13 +503,17 @@ function songText(s) {
 const listSheet = $('listSheet');
 let inline = null; // 펼친 행 { song, btn, el, deck }
 
+// 펼친 재생기는 높이가 0 에서 열리고 같은 길로 접힌다 — 툭 나타나고 툭 사라지면 아래 줄들이 한꺼번에 밀려 어색하다
 function closeInline() {
   if (!inline) return;
-  inline.deck.wave.destroy();
-  inline.el.remove();
+  const { el, deck: d } = inline;
   inline.btn.setAttribute('aria-expanded', 'false');
   inline = null;
+  el.inert = true;
+  el.classList.add('is-closing');
+  setTimeout(() => { d.wave.destroy(); el.remove(); }, INLINE_CLOSE_MS); // 접힌 뒤에 치운다
 }
+const INLINE_CLOSE_MS = 360; // style.css 의 --t-mid(320ms)보다 조금 길게
 
 function toggleInline(song, item, btn) {
   const same = inline && inline.btn === btn; // 같은 곡이 여러 묶음에 나올 수 있어 곡이 아니라 누른 줄로 가린다
@@ -485,8 +525,9 @@ function toggleInline(song, item, btn) {
   const cur = h('span', {}, '0:00');
   const dur = h('span', {}, '--:--');
   const msg = h('p', { className: 'player-msg', role: 'status' });
-  const el = h('div', { className: 'inline-player' }, playBtn,
-    h('div', { className: 'inline-track' }, waveEl, h('div', { className: 'times' }, cur, dur), msg));
+  const el = h('div', { className: 'inline-wrap' }, h('div', { className: 'inline-clip' },
+    h('div', { className: 'inline-player' }, playBtn,
+      h('div', { className: 'inline-track' }, waveEl, h('div', { className: 'times' }, cur, dur), msg))));
   item.append(el);
   btn.setAttribute('aria-expanded', 'true');
 
