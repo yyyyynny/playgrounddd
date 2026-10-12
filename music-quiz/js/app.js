@@ -1,9 +1,10 @@
 // 음악 감상 퀴즈 — 화면 상태와 이벤트
-import { SONGS, GROUPS, GAIN_ON } from './songs.js';
+import { SONGS, GROUPS, GAIN_ON, composerGroups, voiceGroups, applyAnswer, cleanRecord, missedSongs } from './songs.js';
 import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
 import { initEgg } from './egg.js';
+import { APP_VERSION, CHANGELOG, changesSince } from './version.js';
 
 const $ = (id) => document.getElementById(id);
 const byId = new Map(SONGS.map((s) => [s.id, s]));
@@ -43,6 +44,9 @@ const store = {
 };
 const KEY_SELECTION = 'music-quiz:selection';
 const KEY_THEME = 'music-quiz:theme';
+const KEY_LIST_MODE = 'music-quiz:list-mode';
+const KEY_RECORD = 'music-quiz:record';
+const KEY_SEEN = 'music-quiz:seen-version';
 
 // ── 테마 (기본 라이트) ──
 function applyTheme(t) {
@@ -164,7 +168,16 @@ let selection = new Set((store.get(KEY_SELECTION, null) || []).filter((id) => by
 if (!selection.size) selection = new Set(ALL_IDS);
 
 // missed: 이번 라운드에서 틀린 곡 · review: 틀린 곡만 다시 푸는 중 · pool: 이번 라운드의 곡 전체(다시 섞기용)
-const quiz = { queue: [], idx: 0, answered: false, correct: 0, tried: 0, missed: new Set(), review: false, pool: [] };
+// 틀린 기록(곡마다 갚을 횟수 · 틀린/푼 횟수 · 마지막 오답, 모양은 songs.js) — 「틀린 곡」 창에 쓴다
+// 라운드를 다시 시작해도, 새로고침해도 남게 브라우저에 저장한다. 저장이 지워지거나 깨지면 빈 기록으로 조용히 시작한다(cleanRecord)
+const record = cleanRecord(store.get(KEY_RECORD, null));
+function saveRecord() {
+  store.set(KEY_RECORD, record);
+  const n = missedSongs(record).length;
+  $('missedLabel').textContent = n ? `틀린 곡 · ${n}` : '틀린 곡';
+}
+// answers: 이번 라운드에서 낸 답(틀린 내역 표시용). 라운드 안에서만 기억한다 — 새로고침하면 라운드가 새로 시작되므로 저장하지 않는다
+const quiz = { queue: [], idx: 0, answered: false, correct: 0, tried: 0, missed: new Set(), answers: new Map(), review: false, pool: [] };
 const form = $('answerForm');
 const inMeta = $('inMeta');
 const inTitle = $('inTitle');
@@ -203,6 +216,7 @@ function newRound(ids) {
   quiz.correct = 0;
   quiz.tried = 0;
   quiz.missed = new Set();
+  quiz.answers = new Map();
   showQuestion();
 }
 
@@ -218,6 +232,7 @@ function showQuestion() {
     $('doneScore').textContent = `${quiz.correct} / ${quiz.queue.length}`;
     $('doneSub').textContent = miss ? `${quiz.queue.length}곡 중 ${quiz.correct}곡을 맞혔습니다` : '전부 맞혔습니다';
     // 틀린 곡이 있으면 그것만 다시 푸는 버튼이 주(主) 버튼, 전체 다시 풀기는 보조
+    renderMissed();
     $('retryMissed').hidden = miss === 0;
     $('retryMissed').textContent = `틀린 ${miss}곡만 다시 풀기`;
     $('restartAll').classList.toggle('is-secondary', miss > 0);
@@ -270,6 +285,25 @@ function mineSpan(answer, input, ok) {
 }
 const sep = () => h('span', { className: 'sep', 'aria-hidden': 'true' }, ' – ');
 
+// 틀린 내역: 전체 목록과 같은 줄 모양에 정답을 쓰고 못 맞힌 글자만 빨강. 내가 쓴 답은 줄마다 접어 둔다(틀린 글자 빨강)
+function renderMissed() {
+  $('missedBox').hidden = quiz.missed.size === 0;
+  $('missedBox').open = false;
+  $('missedList').replaceChildren(...quiz.queue.filter((id) => quiz.missed.has(id)).map((id) => {
+    const s = byId.get(id);
+    const a = quiz.answers.get(id);
+    return h('div', { className: 'song' },
+      h('div', { className: 'song-row' },
+        h('span', { className: 'song-num' }, `${s.id}.`),
+        h('div', { className: 'song-text' },
+          h('div', { className: 'song-meta' }, answerSpan(s.meta, a.meta, a.metaOk)),
+          h('div', { className: 'song-title' }, answerSpan(s.title, a.title, a.titleOk)))),
+      h('details', { className: 'mine' },
+        h('summary', {}, '내가 쓴 답'),
+        h('p', {}, mineSpan(s.meta, a.meta, a.metaOk), sep(), mineSpan(s.title, a.title, a.titleOk))));
+  }));
+}
+
 function submit() {
   if (quiz.answered) return;
   const song = quizDeck.song;
@@ -280,6 +314,9 @@ function submit() {
   const ok = metaOk && titleOk;
   quiz.tried++;
   if (ok) quiz.correct++; else quiz.missed.add(song.id);
+  quiz.answers.set(song.id, { meta, title, metaOk, titleOk });
+  record[song.id] = applyAnswer(record[song.id], ok, meta, title);
+  saveRecord();
   setAnswered(true);
   try { navigator.vibrate?.(ok ? 12 : [14, 60, 14]); } catch { /* 진동 미지원 */ }
 
@@ -445,11 +482,36 @@ function toggleInline(song, item, btn) {
   attach(d, true); // 클릭 안에서 바로 재생해야 모바일에서도 소리가 난다
 }
 
+// 목록 묶는 방식: 번호순(기본) 또는 작곡가 모아보기. 고른 쪽을 기억한다(저장이 지워지면 번호순으로 돌아갈 뿐이다)
+const LIST_MODES = {
+  number: () => GROUPS.map((x) => ({ label: x.label, songs: songsOf(x) })),
+  composer: composerGroups,
+  voice: voiceGroups
+};
+let listMode = store.get(KEY_LIST_MODE, 'number');
+if (!(listMode in LIST_MODES)) listMode = 'number';
+$('listModes').addEventListener('click', (e) => {
+  const mode = e.target.closest('[data-list-mode]')?.dataset.listMode;
+  if (!mode || mode === listMode) return;
+  listMode = mode;
+  store.set(KEY_LIST_MODE, mode);
+  player.pause();
+  renderList();
+});
+
 function renderList() {
+  closeInline();
   const body = $('listBody');
-  for (const g of GROUPS) {
+  body.replaceChildren();
+  for (const b of $('listModes').querySelectorAll('[data-list-mode]')) {
+    const on = b.dataset.listMode === listMode;
+    b.setAttribute('aria-pressed', String(on));
+    b.classList.toggle('is-on', on);
+  }
+  const groups = LIST_MODES[listMode]();
+  for (const g of groups) {
     body.append(h('h3', { className: 'group-head' }, g.label));
-    for (const s of songsOf(g)) {
+    for (const s of g.songs) {
       const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), songText(s));
       const item = h('div', { className: 'song' }, row);
       if (s.vid) {
@@ -466,6 +528,7 @@ function renderList() {
 
 $('openList').addEventListener('click', () => {
   player.pause();
+  renderList(); // 틀린 기록이 바뀌었을 수 있다
   openSheet(listSheet);
 });
 listSheet.addEventListener('close', () => {
@@ -473,6 +536,59 @@ listSheet.addEventListener('close', () => {
   player.pause();
   // ponytail: 한계 — 목록에서 다른 곡을 들었다면 퀴즈 곡은 시작점부터 다시 준비된다. 위치 유지가 필요하면 load 전에 time() 을 저장해 두었다가 seek
   attach(quizDeck);
+});
+
+// ── 틀린 곡: 갚을 횟수가 남은 곡을 모아 보고, 다시 듣고, 그 곡들로만 풀 수 있다 ──
+const missedSheet = $('missedSheet');
+function renderMissedSheet() {
+  closeInline();
+  const songs = missedSongs(record);
+  $('missedFoot').hidden = songs.length === 0;
+  $('missedBody').replaceChildren(
+    h('p', { className: songs.length ? 'list-hint' : 'list-empty' }, songs.length
+      ? '틀리면 남은 횟수가 1 늘고, 맞히면 1 줄어요. 0이 되면 여기서 빠져요.'
+      : '아직 틀린 곡이 없어요. 문제를 틀리면 여기에 모여요.'),
+    ...songs.map((s) => {
+      const r = record[s.id];
+      const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), songText(s));
+      const item = h('div', { className: 'song' }, row);
+      if (s.vid) {
+        const btn = h('button', { type: 'button', className: 'listen-btn', 'aria-expanded': 'false' }, icon('i-play'), '듣기');
+        btn.addEventListener('click', () => toggleInline(s, item, btn));
+        row.append(btn);
+      }
+      const del = h('button', { type: 'button', className: 'icon-btn', 'aria-label': `${s.title} 기록 지우기` }, icon('i-close'));
+      del.addEventListener('click', () => { delete record[s.id]; saveRecord(); player.pause(); renderMissedSheet(); });
+      row.append(del);
+      item.append(h('p', { className: 'miss-stat' }, h('strong', {}, `${r.debt}번 남음`), ` · ${r.tried}번 중 ${r.wrong}번 틀림`));
+      if (r.last) {
+        const metaOk = isCorrect(s.meta, r.last.meta), titleOk = isCorrect(s.title, r.last.title);
+        item.append(h('details', { className: 'mine' }, h('summary', {}, '마지막으로 쓴 오답'),
+          h('p', {}, mineSpan(s.meta, r.last.meta, metaOk), sep(), mineSpan(s.title, r.last.title, titleOk))));
+      }
+      return item;
+    }));
+}
+$('openMissed').addEventListener('click', () => {
+  player.pause();
+  renderMissedSheet();
+  openSheet(missedSheet);
+});
+missedSheet.addEventListener('close', () => {
+  closeInline();
+  player.pause();
+  attach(quizDeck);
+});
+$('missedStart').addEventListener('click', () => {
+  const ids = missedSongs(record).map((s) => s.id);
+  closeSheet(missedSheet);
+  newRound(ids);
+});
+$('missedClear').addEventListener('click', () => {
+  if (!confirm('틀린 기록을 모두 지울까요? 되돌릴 수 없어요.')) return;
+  for (const id of Object.keys(record)) delete record[id];
+  saveRecord();
+  renderMissedSheet();
 });
 
 // ── 집중 학습 ──
@@ -529,6 +645,44 @@ $('focusStart').addEventListener('click', () => {
   newRound();
 });
 
+// ── 업데이트 알림: 새 판이면 그 사이 바뀐 것을 한 번 띄운다. 종 버튼은 전체 내역 (내용은 js/version.js) ──
+function showNews(entries, title) {
+  $('newsTitle').textContent = title;
+  $('newsBody').replaceChildren(...entries.flatMap((c) => [
+    h('h3', { className: 'group-head' }, c.v),
+    h('ul', { className: 'news-list' }, ...c.lines.map((l) => h('li', {}, l)))
+  ]));
+  openSheet($('newsSheet'));
+}
+$('openNews').addEventListener('click', () => showNews(CHANGELOG, '업데이트 내역'));
+
+// ── 키보드: 마우스 없이 풀기 ──
+// 스페이스 = 재생·일시정지, 엔터 = 제출·다음 문제(답 칸 · 버튼 위에서는 브라우저 기본 동작이 이미 그렇게 한다)
+document.addEventListener('keydown', (e) => {
+  if (e.isComposing || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (document.querySelector('dialog[open]') || $('quizActive').hidden) return;
+  const el = e.target;
+  if (e.code === 'Space') {
+    // 버튼 · 슬라이더 위에서는 기본 동작에 맡긴다. 답 칸에서는 비어 있을 때만 — 글자 사이 띄어쓰기는 그대로 입력돼야 한다
+    // ponytail: 한계 — 답을 치는 중에는 스페이스로 멈출 수 없다(Tab 으로 재생 버튼에 가서 누른다). 필요하면 전용 단축키 추가
+    if (el.matches('button, [role="slider"]') || (el.matches('input') && el.value)) return;
+    e.preventDefault();
+    $('quizPlay').click();
+  } else if (e.key === 'Enter' && el === document.body) {
+    // 아무 데도 초점이 없을 때: 채점이 끝났으면 다음 문제, 아니면 빈 답이 제출되지 않게 답 칸으로만 간다
+    e.preventDefault();
+    if (quiz.answered) goNext(); else focusAnswer();
+  }
+});
+// 재생을 시작하면 바로 답을 칠 수 있게 빈 칸으로 간다
+function focusAnswer() {
+  (inMeta.value.trim() && !inTitle.value.trim() ? inTitle : inMeta).focus({ preventScroll: true });
+}
+$('quizPlay').addEventListener('click', () => {
+  const s = player.state();
+  if (!quiz.answered && (s.playing || s.buffering)) focusAnswer();
+});
+
 // ── 새로고침 방지: 풀던 중에 새로고침 · 닫기 · 뒤로 가기를 하면 한 번 묻는다 ──
 // (모바일 당겨서 새로고침은 style.css 의 overscroll-behavior 로 막는다)
 window.addEventListener('beforeunload', (e) => {
@@ -557,6 +711,7 @@ function trackViewport() {
 }
 
 // ── 시작 ──
+saveRecord(); // 틀린 곡 수 표시
 trackViewport();
 renderList();
 updateFocusLabel();
@@ -564,3 +719,8 @@ player.subscribe(render);
 player.init('yt');
 initEgg({ sheet: $('eggSheet'), trigger: document.querySelector('.brand'), open: openSheet, onOpen: () => player.pause() });
 newRound();
+{
+  const news = changesSince(store.get(KEY_SEEN, null));
+  store.set(KEY_SEEN, APP_VERSION);
+  if (news.length) showNews(news, '새로 바뀐 것');
+}

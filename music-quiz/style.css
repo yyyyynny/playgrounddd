@@ -148,7 +148,7 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   .icon-btn:active, .icon-btn.is-pressed { transform: none; }
 }
 
-.nav { display: flex; gap: 8px; margin-bottom: 14px; }
+.nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
   border: 1px solid var(--line); background: var(--surface); color: var(--ink);
@@ -306,6 +306,14 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 .done { text-align: center; padding: 18px 4px 4px; }
 .done-score { font-size: 3rem; font-weight: 800; letter-spacing: -0.05em; line-height: 1.05; margin: 4px 0 6px; font-variant-numeric: tabular-nums; }
 .done-sub { color: var(--muted); margin: 0 0 8px; }
+/* 틀린 내역 — 전체 목록과 같은 줄(.song). 정답에서 못 맞힌 글자와 내 답의 틀린 글자는 빨강(.diff) */
+.missed { text-align: left; margin: 4px 0 14px; }
+.missed summary, .mine summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: .86rem; }
+.missed > summary { text-align: center; padding: 8px 0; }
+.missed .song-row { padding-bottom: 4px; }
+.mine { margin: 0 0 10px 34px; }
+.mine summary { font-size: .78rem; }
+.mine p { margin: 4px 0 0; font-size: .86rem; color: var(--muted); overflow-wrap: anywhere; }
 
 /* 시트(dialog) — 반투명 재질. 아래에서 올라와 같은 길로 내려간다. 머리를 끌어 닫을 수 있다 */
 .sheet {
@@ -358,6 +366,31 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   aspect-ratio: 16 / 9; border-radius: var(--r-mid); overflow: hidden; background: #000;
 }
 .egg-video iframe { display: block; width: 100%; height: 100%; border: 0; }
+/* 이스터에그 목록 — 작은 막대를 누르면 아래로 펼쳐지고 같은 길로 접힌다(Apple 방식: 누르는 순간 반응 · 넘침 없는 감쇠 곡선 · 온 길로 되돌아감) */
+.egg-bar {
+  display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 10px; padding: 9px 12px;
+  border: 0; border-radius: var(--r-mid); background: var(--surface-2); color: var(--ink);
+  font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer;
+  transition: transform var(--t-press) ease-out, background-color var(--t-fast);
+}
+.egg-bar:active { transform: scale(.98); background: var(--accent-soft); }
+.egg-bar span:first-child { flex: 1; text-align: left; }
+#eggCount { color: var(--muted); font-variant-numeric: tabular-nums; }
+.egg-bar svg { width: 16px; height: 16px; color: var(--muted); rotate: 90deg; transition: rotate var(--t-mid) var(--ease-spring); }
+.egg-bar[aria-expanded="true"] svg { rotate: -90deg; }
+.egg-list { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--t-mid) var(--ease-spring), opacity var(--t-fast); }
+.egg-list.is-open { grid-template-rows: 1fr; opacity: 1; }
+.egg-list ol { min-height: 0; overflow: hidden; margin: 0; padding: 0; list-style: none; }
+.egg-list li:first-child { margin-top: 6px; }
+.egg-item {
+  display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 10px 12px;
+  border: 0; border-radius: 12px; background: none; color: var(--ink);
+  font: inherit; font-size: .92rem; text-align: left; cursor: pointer;
+}
+.egg-item:active { background: var(--surface-2); }
+.egg-item[aria-current="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.egg-item span:first-child { flex: none; width: 1.6em; font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+#eggNext svg { width: 15px; height: 15px; }
 /* 폰을 가로로 돌리면 시트가 화면을 채우고 여백을 줄여 영상에 자리를 준다 */
 @media (orientation: landscape) and (max-height: 560px) {
   #eggSheet {
@@ -368,6 +401,10 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   #eggSheet .sheet-body { padding: 0 12px 8px; }
   .egg-video { width: min(100%, calc((var(--app-h, 100dvh) - 66px) * 16 / 9)); }
 }
+
+/* 업데이트 내역 */
+.news-list { margin: 0; padding-left: 1.15em; line-height: 1.55; font-size: .92rem; }
+.news-list li + li { margin-top: 6px; }
 
 /* 노션 느낌 목록 — 작곡가 → 작품명 순 */
 .group-head { font-size: .78rem; font-weight: 700; letter-spacing: .01em; color: var(--muted); margin: 18px 0 4px; }
@@ -386,6 +423,16 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 .listen-btn svg { width: 16px; height: 16px; }
 .listen-btn[aria-expanded="true"] { background: var(--accent); color: var(--accent-ink); }
 .no-link { flex: none; font-size: .76rem; color: var(--muted); }
+.list-empty { color: var(--muted); font-size: .9rem; text-align: center; margin: 28px 0; }
+#listModes { flex-wrap: wrap; }
+/* 틀린 곡 창 */
+.miss-stat { margin: -4px 0 8px 34px; font-size: .78rem; color: var(--muted); }
+.miss-stat strong { color: var(--bad); font-weight: 700; }
+#missedSheet .song-row .icon-btn { flex: none; }
+#missedFoot { display: grid; justify-items: center; gap: 2px; }
+#missedFoot[hidden] { display: none; }
+#missedFoot .primary-btn { width: 100%; }
+.list-hint { color: var(--muted); font-size: .78rem; line-height: 1.5; margin: 6px 0 0; }
 .inline-player {
   display: flex; align-items: center; gap: 10px;
   margin: 0 0 12px 34px; padding: 8px 12px 6px 8px;
@@ -413,6 +460,7 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; }
   .cover::after { animation: none; }
+  .egg-list, .egg-bar svg { transition: none; }
   .sheet, .sheet.is-closing { transform: none !important; transition: opacity 200ms ease; }
   .sheet.is-closing { opacity: 0; }
   @starting-style { .sheet[open] { opacity: 0; } }

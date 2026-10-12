@@ -77,4 +77,5 @@ Apple 디자인 원칙(`.claude/skills/apple-design`)을 따른다: 누르는 �
 | `js/player.js` | 숨긴 유튜브 플레이어 하나를 공유 |
 | `js/wave.js` | 물결 진행 막대(canvas) |
 | `js/app.js` | 화면 상태 · 이벤트 · localStorage |
+| `js/version.js` | 판 번호 · 업데이트 내역(새 판이면 알림, 테스트: `tests/version.test.js`) — 기능을 바꾸면 여기에 한 줄 |
 | `js/egg.js` | 이스터에그(숨은 재생 목록, 테스트: `tests/egg.test.js`) |

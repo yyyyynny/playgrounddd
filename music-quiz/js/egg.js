@@ -1,6 +1,7 @@
-// 이스터에그 — 키보드로 yyyyynny 를 치거나 제목을 연달아 5번 누르면 열린다. 관리자님이 좋아하는 노래를 영상과 함께 무작위 재생
+// 이스터에그 — 키보드로 yyyyynny 를 치거나 제목을 연달아 5번 누르면 열린다. 관리자님이 좋아하는 노래를 영상과 함께 재생
+// 곡에는 목록 순서대로 번호가 붙는다. 열 때는 아무 곡에서 시작하고, 「다음 곡」과 곡이 끝났을 때는 다음 번호로 간다(끝이면 1번으로)
 // 곡 목록 [{ v: 영상 ID, s: 시작 초, t: 표시 이름 }] 은 한눈에 읽히지 않게 섞어 둔다(JSON → base64 → 뒤집기). 비밀 보장은 아니다
-const LIST = '=0VfiALuqjLsszLrrjIirDykAKOISV0VRJiOiQnIsYTMxojIzJCLigTZSFDSKljemlGciojI2Jyes0nIkS46sa66su46gQYnsTIsqz5isDykAKOIcG66cG66cWZ7iojI0JCLzYjOiMnIsIyahN2NjRlehRDcMJiOiYnI7xSfigJsrzbnsjKsszLltDykAKOIoyJ7M2J7iojI0JCLwojIzJCLic2d6pFSXhkT3onWiojI2Jyes0nIlNXdvhEIyV3bZBCdhBSehR3Ug8GdgQnbhdFI5xGbhVmUgkEITCo4gUURCpVQEJiOiQnIsUzNxojIzJCLiUUZON0UB5EMN5ENiojI2Jyes0nIACr6sCL7Me66gMJgiDiLptWd0JiOiQnIsIDN6IyciwiIJVTd2NWRFlFca9mI6IidisHL9JCpKyOsayOs4qOlF2OoyuOITCo4gwqprDrmsDKnsLiOiQnIsIDN6IyciwiIRN0aDhkQhtES5QnI6Iidis3W';
+const LIST = '=0VfiUHI0ACZv92ZgMJgiDybnlmck9mUgEWa2lGbPJiOiQnIsgjM6IyciwiI3JHWBNVZw8UStRnI6IidisHL9JSZilXYNBSZNBCbsF2QgMJgiDiblNHclpEIlFmUgkHbyF2QiojI0JCLzIjOiMnIsISU552TfdXWNlXULJiOiYnI7xSfiUnZlR2YiFGITCo4gUETZF0RiojI0JCL4QjOiMnIsIybSVVROhUewUmQKJiOiYnI7xSfikCh5uOh5uOhPuOIuQXYlZGKgILisDClKuOvU2OI02J78y660Sr6gMJgiDybylWaNJiOiQnIscTOxojIzJCLiMGNapHVyYkQEZTOiojI2Jyes0nIpwJoszqprDCpEuOt5yOhVyOIuQXYlZGKggKisnqqrDykAKOIvJXap1kI6ICdiwSOwIjOiMnIsIyclJzaYBlU4cTU2IiOiYnI7xSfiEpnrzqgsDCvdyOjF2et5yOITCo4gQbnsDJsqPYvqLiOiQnIsYjNxojIzJCLiMmdNdmTNhzQtoFViojI2Jyes0nIzRHanlmTgUGaUBykAKOIpl2YpZXQiojI0JCL2EjOiMnIsISQykTbndGW3UzR5JiOiYnI7xSfigpnrjbhrDCmdyOhFuOjGyOI8Or6EO76g0rsrj4gsDykAKOIv5WZyV2UiojI0JCLygjOiMnIsICMzQFZjJVVQRHZlJiOiYnI7xSfigKssDLuqjpirjZltTKsrDykAKOIjl2c11EI39GbGJiOiQnIsMjN6IyciwiInFkZzVDStMzb1ElI6IidisHL9JSKbm76IOI7g4CdhVmZoAChjyOlyuOigyOhzqOITCo4g8mcplWTiojI0JCL1UjOiMnIsIycuVGaixmcPJ2VyJiOiYnI7xSfiALuqjLsszLrrjIirDykAKOISV0VRJiOiQnIsYTMxojIzJCLigTZSFDSKljemlGciojI2Jyes0nIkS46sa66su46gQYnsTIsqz5isDykAKOIcG66cG66cWZ7iojI0JCLzYjOiMnIsIyahN2NjRlehRDcMJiOiYnI7xSfigJsrzbnsjKsszLltDykAKOIoyJ7M2J7iojI0JCLwojIzJCLic2d6pFSXhkT3onWiojI2Jyes0nIlNXdvhEIyV3bZBCdhBSehR3Ug8GdgQnbhdFI5xGbhVmUgkEITCo4gUURCpVQEJiOiQnIsUzNxojIzJCLiUUZON0UB5EMN5ENiojI2Jyes0nIACr6sCL7Me66gMJgiDiLptWd0JiOiQnIsIDN6IyciwiIJVTd2NWRFlFca9mI6IidisHL9JCpKyOsayOs4qOlF2OoyuOITCo4gwqprDrmsDKnsLiOiQnIsIDN6IyciwiIRN0aDhkQhtES5QnI6Iidis3W';
 export const eggSongs = () => JSON.parse(new TextDecoder().decode(
   Uint8Array.from(atob([...LIST].reverse().join('')), (c) => c.charCodeAt(0))));
 
@@ -13,30 +14,52 @@ const TAP_GAP = 600;     // 연달아로 치는 간격(ms)
 export function initEgg({ sheet, trigger, open, onOpen }) {
   const songs = eggSongs();
   let yt = null, cur = -1, typed = '', taps = 0, last = 0, fails = 0;
+  const $ = (sel) => sheet.querySelector(sel);
 
-  function next() {
+  // 목록: 작은 막대를 누르면 펼쳐지고, 곡을 누르면 그 번호로 간다
+  const items = songs.map((s, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'egg-item';
+    b.append(Object.assign(document.createElement('span'), { textContent: i + 1 }), Object.assign(document.createElement('span'), { textContent: s.t }));
+    b.addEventListener('click', () => play(i));
+    const li = document.createElement('li');
+    li.append(b);
+    $('#eggList ol').append(li);
+    return b;
+  });
+  $('#eggListBtn').addEventListener('click', () => {
+    const on = $('#eggListBtn').getAttribute('aria-expanded') !== 'true';
+    $('#eggListBtn').setAttribute('aria-expanded', String(on));
+    $('#eggList').classList.toggle('is-open', on);
+    $('#eggList').inert = !on; // 접힌 동안에는 초점 · 클릭이 닿지 않게
+    if (on) items[cur]?.scrollIntoView({ block: 'nearest' });
+  });
+
+  function play(i) {
     if (!window.YT?.Player || (yt && !yt.loadVideoById)) return; // 유튜브 API · 플레이어 준비 전
-    let i;
-    do { i = Math.floor(Math.random() * songs.length); } while (i === cur && songs.length > 1);
-    cur = i;
-    const s = songs[i];
-    sheet.querySelector('#eggTitle').textContent = s.t;
+    cur = (i + songs.length) % songs.length;
+    const s = songs[cur];
+    $('#eggTitle').textContent = `${cur + 1}. ${s.t}`;
+    $('#eggCount').textContent = `${cur + 1} / ${songs.length}`;
+    items.forEach((b, k) => { if (k === cur) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); });
     if (yt) { yt.loadVideoById({ videoId: s.v, startSeconds: s.s }); return; }
     yt = new window.YT.Player('eggYt', {
       videoId: s.v,
       playerVars: { start: s.s, autoplay: 1, playsinline: 1, rel: 0 },
       events: {
-        onStateChange: (e) => { if (e.data === 1) fails = 0; else if (e.data === 0) next(); }, // 끝나면 다음 곡
+        onStateChange: (e) => { if (e.data === 1) fails = 0; else if (e.data === 0) next(); }, // 끝나면 다음 번호
         // 유튜브가 막은 영상(퍼가기 금지 등)은 건너뛴다. 전부 막혔으면 멈춘다
         onError: () => { if (++fails < songs.length) next(); }
       }
     });
   }
+  const next = () => play(cur + 1);
   function show() {
     if (sheet.open) return;
     onOpen();
     open(sheet);
-    next();
+    play(Math.floor(Math.random() * songs.length));
   }
 
   document.addEventListener('keydown', (e) => {
@@ -49,6 +72,6 @@ export function initEgg({ sheet, trigger, open, onOpen }) {
     last = e.timeStamp;
     if (taps >= TAPS) { taps = 0; show(); }
   });
-  sheet.querySelector('#eggNext').addEventListener('click', next);
+  $('#eggNext').addEventListener('click', next);
   sheet.addEventListener('close', () => yt?.pauseVideo?.());
 }
