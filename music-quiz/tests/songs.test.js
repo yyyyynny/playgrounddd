@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, statSync } from 'node:fs';
-import { SONGS, GAIN_ON } from '../js/songs.js';
+import { SONGS, GAIN_ON, composerGroups } from '../js/songs.js';
 
 test('곡 번호는 1~32 가 겹치지 않고 모두 있다', () => {
   assert.deepEqual(SONGS.map((s) => s.id), Array.from({ length: 32 }, (_, i) => i + 1));
@@ -31,4 +31,12 @@ test('곡 이미지는 번호.webp(영상 있는 곡) · 번호.svg(영상 없�
     assert.ok(want.has(f), `곡 목록에 없는 이미지: ${f}`);
     assert.ok(statSync(new URL(f, dir)).size <= 150_000, `${f} 가 150KB 를 넘는다`);
   }
+});
+
+test('작곡가 모아보기: 곡 많은 작곡가가 먼저, 마지막은 「그 밖」, 32곡이 한 번씩만 들어간다', () => {
+  const groups = composerGroups();
+  assert.equal(groups[0].label, '모차르트 · 4곡');
+  assert.equal(groups.at(-1).label, '그 밖');
+  assert.ok(groups.slice(0, -1).every((g) => g.songs.length > 1 && g.songs.every((s) => s.meta === g.songs[0].meta)));
+  assert.deepEqual(groups.flatMap((g) => g.songs.map((s) => s.id)).sort((a, b) => a - b), SONGS.map((s) => s.id));
 });

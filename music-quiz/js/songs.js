@@ -48,3 +48,14 @@ export const GROUPS = [
   { label: '11 – 20', from: 11, to: 20 },
   { label: '21 – 32', from: 21, to: 32 }
 ];
+
+// 작곡가 모아보기 묶음 — 두 곡 이상인 작곡가를 곡 많은 순으로(같으면 번호 빠른 순), 한 곡뿐인 작곡가는 「그 밖」에 번호순
+export function composerGroups() {
+  const by = new Map();
+  for (const s of SONGS) by.set(s.meta, [...(by.get(s.meta) || []), s]);
+  const multi = [...by.values()].filter((l) => l.length > 1).sort((a, b) => b.length - a.length);
+  return [
+    ...multi.map((songs) => ({ label: `${songs[0].meta} · ${songs.length}곡`, songs })),
+    { label: '그 밖', songs: SONGS.filter((s) => by.get(s.meta).length === 1) }
+  ];
+}

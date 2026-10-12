@@ -1,5 +1,5 @@
 // 음악 감상 퀴즈 — 화면 상태와 이벤트
-import { SONGS, GROUPS, GAIN_ON } from './songs.js';
+import { SONGS, GROUPS, GAIN_ON, composerGroups } from './songs.js';
 import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
@@ -44,6 +44,7 @@ const store = {
 };
 const KEY_SELECTION = 'music-quiz:selection';
 const KEY_THEME = 'music-quiz:theme';
+const KEY_BY_COMPOSER = 'music-quiz:list-by-composer';
 const KEY_SEEN = 'music-quiz:seen-version';
 
 // ── 테마 (기본 라이트) ──
@@ -470,11 +471,24 @@ function toggleInline(song, item, btn) {
   attach(d, true); // 클릭 안에서 바로 재생해야 모바일에서도 소리가 난다
 }
 
+// 목록 묶는 방식: 번호순(기본) 또는 작곡가 모아보기. 고른 쪽을 기억한다(저장이 지워지면 번호순으로 돌아갈 뿐이다)
+let byComposer = store.get(KEY_BY_COMPOSER, false) === true;
+$('listByComposer').addEventListener('click', () => {
+  byComposer = !byComposer;
+  store.set(KEY_BY_COMPOSER, byComposer);
+  player.pause();
+  renderList();
+});
+
 function renderList() {
+  closeInline();
   const body = $('listBody');
-  for (const g of GROUPS) {
+  body.replaceChildren();
+  $('listByComposer').setAttribute('aria-pressed', String(byComposer));
+  $('listByComposer').classList.toggle('is-on', byComposer);
+  for (const g of byComposer ? composerGroups() : GROUPS.map((x) => ({ label: x.label, songs: songsOf(x) }))) {
     body.append(h('h3', { className: 'group-head' }, g.label));
-    for (const s of songsOf(g)) {
+    for (const s of g.songs) {
       const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), songText(s));
       const item = h('div', { className: 'song' }, row);
       if (s.vid) {
