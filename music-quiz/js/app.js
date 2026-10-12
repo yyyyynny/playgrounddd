@@ -3,6 +3,7 @@ import { SONGS, GROUPS, GAIN_ON } from './songs.js';
 import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
+import { initEgg } from './egg.js';
 
 const $ = (id) => document.getElementById(id);
 const byId = new Map(SONGS.map((s) => [s.id, s]));
@@ -529,4 +530,5 @@ renderList();
 updateFocusLabel();
 player.subscribe(render);
 player.init('yt');
+initEgg({ sheet: $('eggSheet'), trigger: document.querySelector('.brand'), open: openSheet, onOpen: () => player.pause() });
 newRound();

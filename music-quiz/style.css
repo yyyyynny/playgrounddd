@@ -344,6 +344,9 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 .sheet-body { overflow-y: auto; padding: 0 22px 18px; overscroll-behavior: contain; }
 .sheet-foot { padding: 0 22px max(18px, env(safe-area-inset-bottom)); }
 .sheet-foot .primary-btn { margin-top: 4px; }
+/* 이스터에그 영상 */
+.egg-video { aspect-ratio: 16 / 9; border-radius: var(--r-mid); overflow: hidden; background: #000; }
+.egg-video iframe { display: block; width: 100%; height: 100%; border: 0; }
 
 /* 노션 느낌 목록 — 작곡가 → 작품명 순 */
 .group-head { font-size: .78rem; font-weight: 700; letter-spacing: .01em; color: var(--muted); margin: 18px 0 4px; }
