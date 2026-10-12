@@ -1,5 +1,5 @@
 // 음악 감상 퀴즈 — 화면 상태와 이벤트
-import { SONGS, GROUPS, GAIN_ON, composerGroups, voiceGroups, applyAnswer, cleanRecord, missedSongs } from './songs.js';
+import { SONGS, GROUPS, GAIN_ON, composerGroups, voiceGroups, similarGroups, applyAnswer, cleanRecord, missedSongs } from './songs.js';
 import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
@@ -468,7 +468,7 @@ function closeInline() {
 }
 
 function toggleInline(song, item, btn) {
-  const same = inline && inline.song.id === song.id;
+  const same = inline && inline.btn === btn; // 같은 곡이 여러 묶음에 나올 수 있어 곡이 아니라 누른 줄로 가린다
   closeInline();
   if (same) { player.pause(); return; }
 
@@ -491,7 +491,8 @@ function toggleInline(song, item, btn) {
 const LIST_MODES = {
   number: () => GROUPS.map((x) => ({ label: x.label, songs: songsOf(x) })),
   composer: composerGroups,
-  voice: voiceGroups
+  voice: voiceGroups,
+  similar: similarGroups
 };
 let listMode = store.get(KEY_LIST_MODE, 'number');
 if (!(listMode in LIST_MODES)) listMode = 'number';
@@ -516,7 +517,9 @@ function renderList() {
   const groups = LIST_MODES[listMode]();
   for (const g of groups) {
     // 작곡가 · 노래/연주 묶음은 제목이 곧 정보라 크게 쓴다(이름은 진하게, 곡 수는 옅게). 번호순 묶음은 구분선 구실만 한다
-    const [name, count] = g.label.split(' · ');
+    // 곡 수는 마지막 가운뎃점 뒤에 있다(「합창 · 종교 음악 · 4곡」처럼 이름에도 가운뎃점이 올 수 있다)
+    const cut = /곡$/.test(g.label) ? g.label.lastIndexOf(' · ') : -1;
+    const [name, count] = cut < 0 ? [g.label, ''] : [g.label.slice(0, cut), g.label.slice(cut + 3)];
     body.append(listMode === 'number'
       ? h('h3', { className: 'group-head' }, g.label)
       : h('h3', { className: 'group-head is-strong' }, name, count ? h('span', {}, count) : ''));
