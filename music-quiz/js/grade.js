@@ -1,8 +1,9 @@
 // 채점 — 화면과 무관한 순수 함수만 둔다 (node:test 로 검증)
 //
 // 규칙 (최고 관리자님 지정)
-// - 전체 일치만 정답. 단 공백 · 따옴표 · 가운뎃점 · 온점 · 쉼표 · 하이픈 · 대소문자는 무시
-// - 정답의 中(또는 띄어 쓴 '중') 자리는 '중' 으로 쓰거나(붙여 써도 됨) 생략해도 된다. '중세시대' 의 중은 그대로
+// - 전체 일치만 정답. 단 따옴표 · 가운뎃점 · 온점 · 쉼표 · 하이픈 · 대소문자는 무시
+// - 띄어쓰기는 정답과 같아야 한다(2026-10-13 지정) — 있는 자리를 붙여도, 없는 자리를 띄어도 오답. 앞뒤 공백과 연달은 공백은 봐준다
+// - 정답의 中(또는 띄어 쓴 '중') 자리는 '중' 으로 쓰거나(붙여 써도 됨) 생략해도 된다. 이 자리 둘레의 띄어쓰기만 자유. '중세시대' 의 중은 그대로
 // - 'X(Y)' 는 X 대신 Y 를 써도 된다는 뜻. X 는 괄호 앞에서 마지막 中 뒤 부분(없으면 괄호 앞 전체)
 //   예) 오페라 ‘마술피리’ 中 밤의 여왕의 아리아(지옥의 복수심…) → 「…中 지옥의 복수심…」 도 정답
 
@@ -43,20 +44,22 @@ function variants(chars) {
 
 const escape = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// 입력 비교용 문자열: 무시 글자를 빼고 소문자 · 中→중
+// 입력 비교용 문자열: 문장부호를 빼고 소문자 · 中→중, 공백은 하나로 줄이고 앞뒤는 뗀다
 export function normalize(s) {
-  const c = toChars(s);
-  const m = ignoredMask(c);
-  return c.filter((ch, i) => !m[i]).map(fold).join('');
+  return toChars(s).filter((ch) => SPACE.test(ch) || !IGNORED.test(ch)).map((ch) => (SPACE.test(ch) ? ' ' : fold(ch)))
+    .join('').replace(/ +/g, ' ').trim();
 }
 
-// 정답 형태 하나를 정규식으로: 구분자 자리는 '중' 이 있어도 없어도 된다
+// 정답 형태 하나를 정규식으로: 띄어쓰기는 그대로 맞아야 하고, 구분자 자리만 「중」을 쓰든(띄든 붙이든) 빼든 된다
 function pattern(chars, idx, ign, sep) {
-  let out = '';
+  const SEP = '\u0000';
+  let s = '';
   for (const i of idx) {
-    if (ign[i]) continue;
-    out += sep[i] ? '(?:중)?' : escape(fold(chars[i]));
+    if (sep[i]) s += SEP;
+    else if (SPACE.test(chars[i])) s += ' ';
+    else if (!ign[i]) s += fold(chars[i]);
   }
+  const out = s.replace(/ +/g, ' ').trim().split(/ ?\u0000 ?/).map(escape).join('(?: ?중 ?| )');
   return new RegExp(`^${out}$`, 'u');
 }
 
@@ -81,13 +84,13 @@ function lcs(a, ai, b, bi) {
         : Math.max(dp[i - 1][j], dp[i][j - 1]);
     }
   }
-  const hitA = new Set(), hitB = new Set();
+  const hitA = new Set(), hitB = new Set(), pairs = [];
   for (let i = n, j = m; i > 0 && j > 0;) {
-    if (fold(a[ai[i - 1]]) === fold(b[bi[j - 1]])) { hitA.add(ai[i - 1]); hitB.add(bi[j - 1]); i--; j--; }
+    if (fold(a[ai[i - 1]]) === fold(b[bi[j - 1]])) { hitA.add(ai[i - 1]); hitB.add(bi[j - 1]); pairs.unshift([ai[i - 1], bi[j - 1]]); i--; j--; }
     else if (dp[i - 1][j] >= dp[i][j - 1]) i--;
     else j--;
   }
-  return { score: dp[n][m], hitA, hitB };
+  return { score: dp[n][m], hitA, hitB, pairs };
 }
 
 // 글자 단위 비교. 입력과 가장 가까운 정답 형태를 골라 원문 위에 맞음/틀림을 칠한다
@@ -108,8 +111,21 @@ export function charDiff(answer, input) {
       best = { r, len: ai.length, used: new Set(v) };
     }
   }
+  // 띄어쓰기: 서로 맞은 이웃 글자 둘 사이에 한쪽에만 공백이 있으면 그 공백을 틀림으로 표시한다(구분자 中 둘레는 자유)
+  const badA = new Set(), badB = new Set();
+  const p = best.r.pairs;
+  for (let k = 1; k < p.length; k++) {
+    const gapA = [], gapB = [];
+    for (let i = p[k - 1][0] + 1; i < p[k][0]; i++) if (best.used.has(i)) gapA.push(i);
+    for (let i = p[k - 1][1] + 1; i < p[k][1]; i++) gapB.push(i);
+    // 사이에 구분자나 틀린 글자가 끼어 있으면 그쪽이 이미 설명한다
+    if (gapA.some((i) => sa[i] || !ma[i]) || gapB.some((i) => !mb[i])) continue;
+    const spA = gapA.filter((i) => SPACE.test(a[i])), spB = gapB.filter((i) => SPACE.test(b[i]));
+    if (spA.length && !spB.length) spA.forEach((i) => badA.add(i));
+    if (spB.length && !spA.length) spB.forEach((i) => badB.add(i));
+  }
   // 구분자(中)는 안 써도 되므로 빨강으로 칠하지 않는다
-  const answerOk = a.map((ch, i) => ma[i] || sa[i] || !best.used.has(i) || best.r.hitA.has(i));
-  const inputOk = b.map((ch, i) => mb[i] || best.r.hitB.has(i));
+  const answerOk = a.map((ch, i) => !badA.has(i) && (ma[i] || sa[i] || !best.used.has(i) || best.r.hitA.has(i)));
+  const inputOk = b.map((ch, i) => !badB.has(i) && (mb[i] || best.r.hitB.has(i)));
   return { answer: a, answerOk, input: b, inputOk };
 }

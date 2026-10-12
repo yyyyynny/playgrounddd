@@ -259,7 +259,7 @@ function marked(chars, oks, cls) {
   const out = h('span');
   let run = '', runOk = true;
   const flush = () => {
-    if (run) out.append(runOk ? run : h('span', { className: cls }, run));
+    if (run) out.append(runOk ? run : h('span', { className: cls }, run.replace(/\s/g, '␣'))); // 틀린 띄어쓰기는 눈에 보이게
     run = '';
   };
   chars.forEach((ch, i) => {
@@ -340,12 +340,17 @@ function submit() {
 function goNext() {
   quiz.idx++;
   showQuestion();
-  if (!$('quizActive').hidden) $('quizPlay').focus({ preventScroll: true });
+  // 영상 없는 곡은 재생 버튼이 꺼져 있어 초점이 「다음 문제」 버튼에 남는다 — 거기서 엔터를 누르면 빈 답이 제출되므로 답 칸으로 보낸다
+  if (!$('quizActive').hidden) ($('quizPlay').disabled ? inMeta : $('quizPlay')).focus({ preventScroll: true });
 }
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   if (quiz.answered) goNext(); else submit();
+});
+// 두 칸이 다 빈 채로 답 칸에서 누른 엔터는 제출하지 않는다(실수로 오답 처리되는 것 방지). 빈 답은 화살표 버튼으로 낸다
+form.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches('input') && !inMeta.value.trim() && !inTitle.value.trim()) e.preventDefault();
 });
 // 앞 칸에서 Enter: 작품명이 비어 있으면 작품명 칸으로 넘어간다
 inMeta.addEventListener('keydown', (e) => {
