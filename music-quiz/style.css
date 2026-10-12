@@ -306,6 +306,14 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 .done { text-align: center; padding: 18px 4px 4px; }
 .done-score { font-size: 3rem; font-weight: 800; letter-spacing: -0.05em; line-height: 1.05; margin: 4px 0 6px; font-variant-numeric: tabular-nums; }
 .done-sub { color: var(--muted); margin: 0 0 8px; }
+/* 틀린 내역 — 전체 목록과 같은 줄(.song). 정답에서 못 맞힌 글자와 내 답의 틀린 글자는 빨강(.diff) */
+.missed { text-align: left; margin: 4px 0 14px; }
+.missed summary, .mine summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: .86rem; }
+.missed > summary { text-align: center; padding: 8px 0; }
+.missed .song-row { padding-bottom: 4px; }
+.mine { margin: 0 0 10px 34px; }
+.mine summary { font-size: .78rem; }
+.mine p { margin: 4px 0 0; font-size: .86rem; color: var(--muted); overflow-wrap: anywhere; }
 
 /* 시트(dialog) — 반투명 재질. 아래에서 올라와 같은 길로 내려간다. 머리를 끌어 닫을 수 있다 */
 .sheet {

@@ -166,7 +166,8 @@ let selection = new Set((store.get(KEY_SELECTION, null) || []).filter((id) => by
 if (!selection.size) selection = new Set(ALL_IDS);
 
 // missed: 이번 라운드에서 틀린 곡 · review: 틀린 곡만 다시 푸는 중 · pool: 이번 라운드의 곡 전체(다시 섞기용)
-const quiz = { queue: [], idx: 0, answered: false, correct: 0, tried: 0, missed: new Set(), review: false, pool: [] };
+// answers: 이번 라운드에서 낸 답(틀린 내역 표시용). 라운드 안에서만 기억한다 — 새로고침하면 라운드가 새로 시작되므로 저장하지 않는다
+const quiz = { queue: [], idx: 0, answered: false, correct: 0, tried: 0, missed: new Set(), answers: new Map(), review: false, pool: [] };
 const form = $('answerForm');
 const inMeta = $('inMeta');
 const inTitle = $('inTitle');
@@ -205,6 +206,7 @@ function newRound(ids) {
   quiz.correct = 0;
   quiz.tried = 0;
   quiz.missed = new Set();
+  quiz.answers = new Map();
   showQuestion();
 }
 
@@ -220,6 +222,7 @@ function showQuestion() {
     $('doneScore').textContent = `${quiz.correct} / ${quiz.queue.length}`;
     $('doneSub').textContent = miss ? `${quiz.queue.length}곡 중 ${quiz.correct}곡을 맞혔습니다` : '전부 맞혔습니다';
     // 틀린 곡이 있으면 그것만 다시 푸는 버튼이 주(主) 버튼, 전체 다시 풀기는 보조
+    renderMissed();
     $('retryMissed').hidden = miss === 0;
     $('retryMissed').textContent = `틀린 ${miss}곡만 다시 풀기`;
     $('restartAll').classList.toggle('is-secondary', miss > 0);
@@ -272,6 +275,25 @@ function mineSpan(answer, input, ok) {
 }
 const sep = () => h('span', { className: 'sep', 'aria-hidden': 'true' }, ' – ');
 
+// 틀린 내역: 전체 목록과 같은 줄 모양에 정답을 쓰고 못 맞힌 글자만 빨강. 내가 쓴 답은 줄마다 접어 둔다(틀린 글자 빨강)
+function renderMissed() {
+  $('missedBox').hidden = quiz.missed.size === 0;
+  $('missedBox').open = false;
+  $('missedList').replaceChildren(...quiz.queue.filter((id) => quiz.missed.has(id)).map((id) => {
+    const s = byId.get(id);
+    const a = quiz.answers.get(id);
+    return h('div', { className: 'song' },
+      h('div', { className: 'song-row' },
+        h('span', { className: 'song-num' }, `${s.id}.`),
+        h('div', { className: 'song-text' },
+          h('div', { className: 'song-meta' }, answerSpan(s.meta, a.meta, a.metaOk)),
+          h('div', { className: 'song-title' }, answerSpan(s.title, a.title, a.titleOk)))),
+      h('details', { className: 'mine' },
+        h('summary', {}, '내가 쓴 답'),
+        h('p', {}, mineSpan(s.meta, a.meta, a.metaOk), sep(), mineSpan(s.title, a.title, a.titleOk))));
+  }));
+}
+
 function submit() {
   if (quiz.answered) return;
   const song = quizDeck.song;
@@ -282,6 +304,7 @@ function submit() {
   const ok = metaOk && titleOk;
   quiz.tried++;
   if (ok) quiz.correct++; else quiz.missed.add(song.id);
+  quiz.answers.set(song.id, { meta, title, metaOk, titleOk });
   setAnswered(true);
   try { navigator.vibrate?.(ok ? 12 : [14, 60, 14]); } catch { /* 진동 미지원 */ }
 
