@@ -158,7 +158,14 @@ document.addEventListener('click', (e) => { // 키보드(Enter · Space)로 누�
   setTimeout(() => btn.classList.remove('is-pressed'), MIN_PRESS + 80);
 });
 
-$('coverImg').addEventListener('error', (e) => { e.target.hidden = true; });
+$('coverImg').addEventListener('error', (e) => { e.target.hidden = true; $('cover').disabled = true; });
+// 드러난 곡 이미지를 누르면 시트에서 크게 본다
+$('cover').addEventListener('click', () => {
+  const s = quizDeck.song;
+  $('imgTitle').textContent = `${s.meta} – ${s.title}`;
+  $('imgBig').src = $('coverImg').src;
+  openSheet($('imgSheet'));
+});
 $('quizRestart').addEventListener('click', () => player.restart());
 $('quizFwd').addEventListener('click', () => {
   player.seek((player.time().current || quizDeck.song.start) + 10);
@@ -188,6 +195,7 @@ function setAnswered(on) {
   quiz.answered = on;
   form.classList.toggle('is-answered', on);
   $('cover').classList.toggle('is-revealed', on); // 제출하면 숫자 자리에 곡 이미지가 드러난다
+  $('cover').disabled = !on || $('coverImg').hidden; // 드러난 동안만 눌러서 크게 볼 수 있다(이미지 파일이 없으면 못 누름)
   inMeta.disabled = inTitle.disabled = on;
   const label = quiz.idx + 1 < quiz.queue.length ? '다음 문제' : '결과 보기';
   $('nextLabel').textContent = label;

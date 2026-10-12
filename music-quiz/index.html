@@ -57,11 +57,12 @@
         <button class="text-btn" id="reshuffle" type="button"><svg aria-hidden="true"><use href="#i-shuffle"/></svg>다시 섞기</button>
       </div>
 
-      <div class="cover" id="cover" aria-hidden="true">
-        <span class="cover-q">이 곡은?</span>
-        <span class="cover-num" id="coverNum"></span>
+      <!-- 풀 때는 번호만 보이는 장식이고(꺼진 버튼), 제출해 이미지가 드러나면 눌러서 크게 볼 수 있다 -->
+      <button class="cover" id="cover" type="button" aria-label="곡 이미지 크게 보기" disabled>
+        <span class="cover-q" aria-hidden="true">이 곡은?</span>
+        <span class="cover-num" id="coverNum" aria-hidden="true"></span>
         <img class="cover-img" id="coverImg" alt="">
-      </div>
+      </button>
 
       <div class="player" id="quizPlayer">
         <div class="wave" id="quizWave" role="slider" tabindex="0" aria-label="재생 위치"></div>
@@ -130,6 +131,14 @@
     <button class="primary-btn" id="missedStart" type="button">이 곡들로 풀기</button>
     <button class="text-btn" id="missedClear" type="button">기록 모두 지우기</button>
   </div>
+</dialog>
+
+<dialog class="sheet" id="imgSheet" aria-labelledby="imgTitle">
+  <div class="sheet-head" title="끌어 내려 닫기">
+    <h2 id="imgTitle"></h2>
+    <button class="icon-btn" type="button" data-close aria-label="닫기"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+  </div>
+  <div class="sheet-body"><img class="img-big" id="imgBig" alt=""></div>
 </dialog>
 
 <dialog class="sheet" id="newsSheet" aria-labelledby="newsTitle">

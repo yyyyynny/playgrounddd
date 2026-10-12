@@ -189,7 +189,13 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
     radial-gradient(circle at 50% 50%, var(--surface) 0 17%, transparent 17.5%),
     var(--accent-soft);
   display: grid; place-content: center; text-align: center;
+  border: 0; padding: 0; font: inherit; color: inherit; /* button 기본 모양 지우기 */
 }
+.cover:enabled { cursor: zoom-in; transition: transform var(--t-press) ease-out; }
+.cover:enabled:active { transform: scale(.97); }
+/* 크게 보기 */
+.img-big { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--r-mid); }
+#imgSheet h2 { font-size: 1rem; line-height: 1.35; overflow-wrap: anywhere; }
 .cover::after {
   content: ""; position: absolute; inset: -30%;
   background: conic-gradient(from 0deg, transparent 0 20%, var(--sheen) 26%, transparent 34% 70%, color-mix(in srgb, var(--sheen) 60%, transparent) 76%, transparent 84%);
