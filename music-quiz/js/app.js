@@ -510,10 +510,16 @@ function renderList() {
   }
   const groups = LIST_MODES[listMode]();
   for (const g of groups) {
-    body.append(h('h3', { className: 'group-head' }, g.label));
+    // 작곡가 · 노래/연주 묶음은 제목이 곧 정보라 크게 쓴다(이름은 진하게, 곡 수는 옅게). 번호순 묶음은 구분선 구실만 한다
+    const [name, count] = g.label.split(' · ');
+    body.append(listMode === 'number'
+      ? h('h3', { className: 'group-head' }, g.label)
+      : h('h3', { className: 'group-head is-strong' }, name, count ? h('span', {}, count) : ''));
+    // 제목이 작곡가 이름인 묶음에서는 줄마다 되풀이되는 작곡가 줄을 뺀다
+    const sameMeta = listMode === 'composer' && g.songs.length > 1 && g.songs.every((s) => s.meta === g.songs[0].meta);
     for (const s of g.songs) {
       const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), songText(s));
-      const item = h('div', { className: 'song' }, row);
+      const item = h('div', { className: sameMeta ? 'song same-meta' : 'song' }, row);
       if (s.vid) {
         const btn = h('button', { type: 'button', className: 'listen-btn', 'aria-expanded': 'false' }, icon('i-play'), '듣기');
         btn.addEventListener('click', () => toggleInline(s, item, btn));
