@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480">
+  <!-- 27번 존 케이지 「4:33」 — 영상이 없는 무음 곡이라 음소거 아이콘으로 둔다 -->
+  <rect width="480" height="480" fill="#191d27"/>
+  <g fill="none" stroke="#eef1f8" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 200h50l70-60v200l-70-60h-50z" fill="#eef1f8"/>
+    <path d="M300 195l80 90M380 195l-80 90"/>
+  </g>
+</svg>

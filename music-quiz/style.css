@@ -204,6 +204,13 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   font-size: 2.6rem; font-weight: 800; letter-spacing: -0.05em; line-height: 1.05;
   font-variant-numeric: tabular-nums; color: var(--ink);
 }
+/* 곡 이미지 — 풀 때는 숨겨 두고 제출하면 숫자 위로 드러난다 */
+.cover-img {
+  position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transition: opacity var(--t-mid) var(--ease-out);
+}
+.cover.is-revealed .cover-img { opacity: 1; }
+.cover.is-revealed::after { display: none; }
 
 /* 물결 진행 막대 */
 .wave { position: relative; height: 34px; touch-action: none; cursor: pointer; border-radius: 8px; }

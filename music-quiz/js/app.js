@@ -153,6 +153,7 @@ document.addEventListener('click', (e) => { // 키보드(Enter · Space)로 누�
   setTimeout(() => btn.classList.remove('is-pressed'), MIN_PRESS + 80);
 });
 
+$('coverImg').addEventListener('error', (e) => { e.target.hidden = true; });
 $('quizRestart').addEventListener('click', () => player.restart());
 $('quizFwd').addEventListener('click', () => {
   player.seek((player.time().current || quizDeck.song.start) + 10);
@@ -172,6 +173,7 @@ const submitBtn = $('submitBtn');
 function setAnswered(on) {
   quiz.answered = on;
   form.classList.toggle('is-answered', on);
+  $('cover').classList.toggle('is-revealed', on); // 제출하면 숫자 자리에 곡 이미지가 드러난다
   inMeta.disabled = inTitle.disabled = on;
   const label = quiz.idx + 1 < quiz.queue.length ? '다음 문제' : '결과 보기';
   $('nextLabel').textContent = label;
@@ -226,6 +228,9 @@ function showQuestion() {
   setAnswered(false);
   $('progress').textContent = `${quiz.review ? '복습 · ' : ''}문제 ${quiz.idx + 1} / ${quiz.queue.length}`;
   $('coverNum').textContent = String(quiz.idx + 1).padStart(2, '0');
+  // 곡 이미지는 미리 받아 두고 제출 때 보여 준다 — 영상 캡처는 webp, 영상 없는 곡은 svg. 파일이 없으면 숫자 그대로
+  $('coverImg').hidden = false;
+  $('coverImg').src = `img/${String(song.id).padStart(2, '0')}.${song.vid ? 'webp' : 'svg'}`;
   inMeta.value = '';
   inTitle.value = '';
   $('feedback').replaceChildren();
