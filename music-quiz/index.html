@@ -121,6 +121,16 @@
   </div>
 </dialog>
 
+<!-- 이스터에그: 제목 5번 연타 또는 키보드 yyyyynny (js/egg.js) -->
+<dialog class="sheet" id="eggSheet" aria-labelledby="eggTitle" data-locked>
+  <div class="sheet-head">
+    <h2 id="eggTitle"></h2>
+    <button class="pill sm" id="eggNext" type="button"><svg aria-hidden="true"><use href="#i-shuffle"/></svg>다른 곡</button>
+    <button class="icon-btn" type="button" data-close aria-label="닫기"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+  </div>
+  <div class="sheet-body"><div class="egg-video"><div id="eggYt"></div></div></div>
+</dialog>
+
 <!-- 숨긴 유튜브 플레이어: 화면 밖에 두어 영상·썸네일·제목이 절대 보이지 않게 한다 -->
 <div class="yt-host" aria-hidden="true"><div id="yt"></div></div>
 </body>
