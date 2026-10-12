@@ -163,28 +163,39 @@ $('coverImg').addEventListener('error', (e) => { e.target.hidden = true; $('cove
 const imgView = $('imgView');
 const imgBig = $('imgBig');
 let imgHome = null; // 다 커졌을 때의 자리(변형 전 사각형)
-// 큰 그림을 음반 자리에 딱 겹치게 하는 변형. 줄어든 만큼 모서리 둥글기를 키워 음반 자리의 둥글기와 맞춘다
+let imgFrom = null; // 누른 그림(음반 자리 또는 목록의 썸네일) — 여기서 커져 나오고 여기로 돌아간다
+// 큰 그림을 누른 그림 자리에 딱 겹치게 하는 변형. 줄어든 만큼 모서리 둥글기를 키워 그 자리의 둥글기와 맞춘다
 function overCover() {
-  const c = $('cover').getBoundingClientRect();
+  const c = imgFrom.getBoundingClientRect();
   const k = c.width / imgHome.width;
-  imgBig.style.borderRadius = `${parseFloat(getComputedStyle($('cover')).borderRadius) / k}px`;
+  imgBig.style.borderRadius = `${parseFloat(getComputedStyle(imgFrom).borderRadius) / k}px`;
   imgBig.style.transform = `translate(${c.left - imgHome.left}px, ${c.top - imgHome.top}px) scale(${k})`;
 }
-$('cover').addEventListener('click', () => {
-  const s = quizDeck.song;
+const imgSrc = (s) => `img/${String(s.id).padStart(2, '0')}.${s.vid ? 'webp' : 'svg'}`; // 영상 캡처는 webp, 영상 없는 곡은 svg
+function openImg(from, s) {
+  imgFrom = from;
   $('imgTitle').textContent = `${s.meta} – ${s.title}`;
-  imgBig.src = $('coverImg').src;
+  imgBig.src = imgSrc(s);
   imgView.showModal();
   imgBig.style.transition = 'none';
   imgBig.style.transform = imgBig.style.borderRadius = '';
   imgHome = imgBig.getBoundingClientRect();
-  overCover();                              // 음반 자리에서 시작해서
-  $('cover').style.visibility = 'hidden';   // (같은 그림이 둘로 보이지 않게)
+  overCover();                              // 누른 자리에서 시작해서
+  imgFrom.style.visibility = 'hidden';      // (같은 그림이 둘로 보이지 않게)
   void imgBig.offsetWidth;
   imgBig.style.transition = '';
   imgBig.style.transform = imgBig.style.borderRadius = ''; // 제자리로 커진다
   imgView.classList.add('is-in');
-});
+}
+$('cover').addEventListener('click', () => openImg($('cover'), quizDeck.song));
+// 목록 줄에 넣는 작은 곡 이미지 — 누르면 그 자리에서 커진다. 화면에 보일 때 받는다(loading=lazy), 파일이 없으면 자리를 비운다
+function thumb(s) {
+  const img = h('img', { loading: 'lazy', alt: '', src: imgSrc(s) }); // loading 을 src 보다 먼저 넣어야 미리 받지 않는다
+  const btn = h('button', { type: 'button', className: 'thumb', 'aria-label': `${s.title} 이미지 크게 보기` }, img);
+  img.addEventListener('error', () => { btn.disabled = true; img.remove(); });
+  btn.addEventListener('click', () => openImg(btn, s));
+  return btn;
+}
 function closeImg() {
   if (!imgView.open || !imgView.classList.contains('is-in')) return;
   imgView.classList.remove('is-in');
@@ -193,7 +204,7 @@ function closeImg() {
   const done = () => {
     clearTimeout(timer);
     imgBig.removeEventListener('transitionend', onEnd);
-    $('cover').style.visibility = '';
+    imgFrom.style.visibility = '';
     imgView.close();
   };
   const onEnd = (e) => { if (e.propertyName === 'transform') done(); };
@@ -290,7 +301,7 @@ function showQuestion() {
   $('coverNum').textContent = String(quiz.idx + 1).padStart(2, '0');
   // 곡 이미지는 미리 받아 두고 제출 때 보여 준다 — 영상 캡처는 webp, 영상 없는 곡은 svg. 파일이 없으면 숫자 그대로
   $('coverImg').hidden = false;
-  $('coverImg').src = `img/${String(song.id).padStart(2, '0')}.${song.vid ? 'webp' : 'svg'}`;
+  $('coverImg').src = imgSrc(song);
   inMeta.value = '';
   inTitle.value = '';
   $('feedback').replaceChildren();
@@ -339,6 +350,7 @@ function renderMissed() {
     return h('div', { className: 'song' },
       h('div', { className: 'song-row' },
         h('span', { className: 'song-num' }, `${s.id}.`),
+        thumb(s),
         h('div', { className: 'song-text' },
           h('div', { className: 'song-meta' }, answerSpan(s.meta, a.meta, a.metaOk)),
           h('div', { className: 'song-title' }, answerSpan(s.title, a.title, a.titleOk)))),
@@ -575,7 +587,7 @@ function renderList() {
     // 제목이 작곡가 이름인 묶음에서는 줄마다 되풀이되는 작곡가 줄을 뺀다
     const sameMeta = listMode === 'composer' && g.songs.length > 1 && g.songs.every((s) => s.meta === g.songs[0].meta);
     for (const s of g.songs) {
-      const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), songText(s));
+      const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), thumb(s), songText(s));
       const item = h('div', { className: sameMeta ? 'song same-meta' : 'song' }, row);
       if (s.vid) {
         const btn = h('button', { type: 'button', className: 'listen-btn', 'aria-expanded': 'false' }, icon('i-play'), '듣기');
@@ -613,7 +625,7 @@ function renderMissedSheet() {
       : '아직 틀린 곡이 없어요. 문제를 틀리면 여기에 모여요.'),
     ...songs.map((s) => {
       const r = record[s.id];
-      const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), songText(s));
+      const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), thumb(s), songText(s));
       const item = h('div', { className: 'song' }, row);
       if (s.vid) {
         const btn = h('button', { type: 'button', className: 'listen-btn', 'aria-expanded': 'false' }, icon('i-play'), '듣기');
@@ -719,7 +731,7 @@ function showNews(entries, title) {
 }
 $('openNews').addEventListener('click', () => showNews(CHANGELOG, '업데이트 내역'));
 
-// ── 열어 둔 탭에서도 새 판 알아채기: 탭으로 돌아올 때 서버의 version.js 를 확인하고, 판이 다르면 알림 막대를 띄운다 ──
+// ── 열어 둔 탭에서도 새 판 알아채기: 탭으로 돌아올 때와 3분마다 서버의 version.js 를 확인하고, 판이 다르면 알림 막대를 띄운다 ──
 // 풀던 중에 화면이 저절로 바뀌면 안 되므로 새로고침은 누를 때만 한다
 const VERSION_CHECK_GAP = 60000; // 확인 간격(ms) — 탭을 자주 오가도 요청은 1분에 한 번
 // ponytail: 한계 — 새로고침 전에 다시 받아 둘 파일을 손으로 적어 둔다(브라우저가 옛 파일을 계속 쓰지 않게). 파일을 더하면 여기도 더한다
@@ -739,6 +751,7 @@ async function checkNewVersion() {
 }
 document.addEventListener('visibilitychange', checkNewVersion);
 window.addEventListener('focus', checkNewVersion);
+setInterval(checkNewVersion, 180000); // 탭을 켜 둔 채 가만히 있어도 3분마다 본다(화면에 보일 때만)
 $('updateDismiss').addEventListener('click', () => {
   dismissedVersion = $('updateBar').dataset.version; // 이 판은 다시 묻지 않는다(더 새 판이 나오면 다시 뜬다)
   $('updateBar').hidden = true;
