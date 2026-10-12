@@ -80,7 +80,7 @@ function render(s) {
   deck.playBtn.disabled = !hasLink || !s.ready;
   deck.waveEl.setAttribute('aria-disabled', String(deck.playBtn.disabled || Boolean(s.error)));
   deck.wave.setPlaying(mine && s.playing);
-  deck.msg.textContent = !hasLink ? '' : s.error || (!s.ready ? '플레이어 준비 중…' : mine && s.waiting ? `유튜브 응답을 기다리는 중… ${s.waiting}초` : '');
+  deck.msg.textContent = !hasLink ? '' : s.error || (!s.ready ? '플레이어 준비 중…' : mine && s.waiting ? `광고가 나오는 중일 수 있어요(${s.waiting}초). 광고 없이 들으려면 유튜브 프리미엄이나 Brave 브라우저를 써 보세요` : '');
   deck.msg.classList.toggle('is-error', Boolean(s.error));
   deck.onRender?.(active, deck.playBtn.disabled || Boolean(s.error));
   sync();
