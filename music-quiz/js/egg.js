@@ -48,6 +48,7 @@ export function initEgg({ sheet, trigger, open, onOpen }) {
       videoId: s.v,
       playerVars: { start: s.s, autoplay: 1, playsinline: 1, rel: 0 },
       events: {
+        onReady: () => { if (!sheet.open) yt.pauseVideo(); }, // 준비되기 전에 닫았으면 닫힌 채로 재생되지 않게
         onStateChange: (e) => { if (e.data === 1) fails = 0; else if (e.data === 0) next(); }, // 끝나면 다음 번호
         // 유튜브가 막은 영상(퍼가기 금지 등)은 건너뛴다. 전부 막혔으면 멈춘다
         onError: () => { if (++fails < songs.length) next(); }

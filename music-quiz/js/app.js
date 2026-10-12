@@ -438,7 +438,7 @@ function closeSheet(dlg) {
     dlg.classList.remove('is-closing');
     dlg.close();
   };
-  const onEnd = (e) => { if (e.target === dlg && e.propertyName === 'transform') done(); };
+  const onEnd = (e) => { if (e.target === dlg && (e.propertyName === 'transform' || e.propertyName === 'opacity')) done(); }; // 동작 줄이기에서는 opacity 만 바뀐다
   dlg.addEventListener('transitionend', onEnd);
   timer = setTimeout(done, 700); // 전환이 없을 때(동작 줄이기 등) 대비
 }
@@ -495,6 +495,9 @@ for (const dlg of document.querySelectorAll('dialog.sheet')) {
   dlg.querySelector('[data-close]').addEventListener('click', () => closeSheet(dlg));
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); dismiss(dlg); }); // Esc
   dlg.addEventListener('click', (e) => {
+    // 배경(바깥)을 누르면 target 이 dialog 자신이다. 안쪽 버튼을 키보드(Enter · Space)로 누른 클릭은 좌표가 (0,0) 이라
+    // 좌표만 보면 바깥으로 잘못 판정돼 시트가 닫혔다(2026-10-13 검사에서 발견)
+    if (e.target !== dlg) return;
     const r = dlg.getBoundingClientRect();
     const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
     if (!inside) dismiss(dlg);
@@ -723,6 +726,7 @@ $('focusStart').addEventListener('click', () => {
 // ── 업데이트 알림: 새 판이면 그 사이 바뀐 것을 한 번 띄운다. 종 버튼은 전체 내역 (내용은 js/version.js) ──
 function showNews(entries, title) {
   $('newsTitle').textContent = title;
+  $('newsAll').hidden = entries.length === CHANGELOG.length; // 일부만 보여 줄 때만 「전체 내역 보기」
   $('newsBody').replaceChildren(...entries.flatMap((c) => [
     h('h3', { className: 'group-head' }, c.v),
     h('ul', { className: 'news-list' }, ...c.lines.map((l) => h('li', {}, l)))
@@ -730,6 +734,7 @@ function showNews(entries, title) {
   openSheet($('newsSheet'));
 }
 $('openNews').addEventListener('click', () => showNews(CHANGELOG, '업데이트 내역'));
+$('newsAll').addEventListener('click', () => { showNews(CHANGELOG, '업데이트 내역'); $('newsBody').scrollTop = 0; });
 
 // ── 열어 둔 탭에서도 새 판 알아채기: 탭으로 돌아올 때와 3분마다 서버의 version.js 를 확인하고, 판이 다르면 알림 막대를 띄운다 ──
 // 풀던 중에 화면이 저절로 바뀌면 안 되므로 새로고침은 누를 때만 한다
@@ -760,6 +765,7 @@ $('updateReload').addEventListener('click', async () => {
   $('updateReload').disabled = true;
   await Promise.all(APP_FILES.map((f) => fetch(f, { cache: 'reload' }).catch(() => {})));
   location.reload();
+  $('updateReload').disabled = false; // 풀던 중이라 떠나기 확인에서 취소한 경우 다시 누를 수 있게
 });
 
 // ── 키보드: 마우스 없이 풀기 ──

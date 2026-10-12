@@ -443,6 +443,7 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 @starting-style { .update-bar { opacity: 0; translate: -50% 12px; } }
 
 /* 업데이트 내역 */
+#newsFoot { display: grid; justify-items: center; }
 .news-list { margin: 0; padding-left: 1.15em; line-height: 1.55; font-size: .92rem; }
 .news-list li + li { margin-top: 6px; }
 
@@ -522,7 +523,7 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   .sheet, .sheet.is-closing { transform: none !important; transition: opacity 200ms ease; }
   .sheet.is-closing { opacity: 0; }
   @starting-style { .sheet[open] { opacity: 0; } }
-  body:has(.sheet[open]) .page { transform: none; }
+  body:has(.sheet[open]:not(.is-closing)) .page { transform: none; } /* 위의 축소 규칙과 선택자를 맞춰야 이쪽이 이긴다 */
   .submit-btn, .submit-label, .field { transition-duration: 1ms !important; }
 }
 @media (prefers-reduced-transparency: reduce) {

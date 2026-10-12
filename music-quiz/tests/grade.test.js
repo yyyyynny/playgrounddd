@@ -51,6 +51,12 @@ test('띄어쓰기는 정답과 같아야 한다 — 붙여도 띄어도 오답,
   assert.deepEqual([wrong(extra, 'answer'), wrong(extra, 'input')], ['', ' ']);
   const missing = charDiff(song(13).meta + ' 마왕', '슈베르트마왕');
   assert.deepEqual([wrong(missing, 'answer'), wrong(missing, 'input')], [' ', '']);
+  // 中 을 '중' 으로 붙여 쓰고 다른 데서 틀려도, 자유인 中 둘레 공백은 틀림으로 치지 않는다
+  const sepJoined = charDiff(song(3).title, '사계중봄 2악장');
+  assert.deepEqual([wrong(sepJoined, 'answer'), wrong(sepJoined, 'input')], ['1', '2']);
+  // 中 을 빼면서 양쪽을 붙여 쓰면 오답이고, 띄어야 할 자리가 표시된다(빨강이 하나도 없으면 안 된다)
+  assert.equal(isCorrect(song(3).title, '사계봄 1악장'), false);
+  assert.ok(wrong(charDiff(song(3).title, '사계봄 1악장'), 'answer').trim() === '' && wrong(charDiff(song(3).title, '사계봄 1악장'), 'answer').length > 0);
   // 中 을 빼고 써도 그 둘레 공백은 틀림으로 치지 않는다
   const sepOk = charDiff(song(3).title, '사계 봄 2악장');
   assert.deepEqual([wrong(sepOk, 'answer'), wrong(sepOk, 'input')], ['1', '2']);
