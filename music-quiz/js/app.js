@@ -206,6 +206,7 @@ function closeImg() {
     imgBig.removeEventListener('transitionend', onEnd);
     imgFrom.style.visibility = '';
     imgView.close();
+    if (imgFrom === $('cover')) submitBtn.focus({ preventScroll: true }); // 엔터가 그림을 다시 열지 않고 다음 문제로 가게
   };
   const onEnd = (e) => { if (e.propertyName === 'transform') done(); };
   imgBig.addEventListener('transitionend', onEnd);
@@ -218,7 +219,8 @@ $('quizFwd').addEventListener('click', () => {
   player.seek((player.time().current || quizDeck.song.start) + 10);
 });
 
-let selection = new Set((store.get(KEY_SELECTION, null) || []).filter((id) => byId.has(id)));
+const savedSelection = store.get(KEY_SELECTION, null);
+let selection = new Set((Array.isArray(savedSelection) ? savedSelection : []).filter((id) => byId.has(id))); // 깨진 저장값이면 전체 곡으로
 if (!selection.size) selection = new Set(ALL_IDS);
 
 // missed: 이번 라운드에서 틀린 곡 · review: 틀린 곡만 다시 푸는 중 · pool: 이번 라운드의 곡 전체(다시 섞기용)
@@ -438,7 +440,7 @@ function closeSheet(dlg) {
     dlg.classList.remove('is-closing');
     dlg.close();
   };
-  const onEnd = (e) => { if (e.target === dlg && e.propertyName === 'transform') done(); };
+  const onEnd = (e) => { if (e.target === dlg && (e.propertyName === 'transform' || e.propertyName === 'opacity')) done(); }; // 동작 줄이기에서는 opacity 만 바뀐다
   dlg.addEventListener('transitionend', onEnd);
   timer = setTimeout(done, 700); // 전환이 없을 때(동작 줄이기 등) 대비
 }
@@ -495,6 +497,9 @@ for (const dlg of document.querySelectorAll('dialog.sheet')) {
   dlg.querySelector('[data-close]').addEventListener('click', () => closeSheet(dlg));
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); dismiss(dlg); }); // Esc
   dlg.addEventListener('click', (e) => {
+    // 배경(바깥)을 누르면 target 이 dialog 자신이다. 안쪽 버튼을 키보드(Enter · Space)로 누른 클릭은 좌표가 (0,0) 이라
+    // 좌표만 보면 바깥으로 잘못 판정돼 시트가 닫혔다(2026-10-13 검사에서 발견)
+    if (e.target !== dlg) return;
     const r = dlg.getBoundingClientRect();
     const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
     if (!inside) dismiss(dlg);
@@ -556,7 +561,7 @@ const LIST_MODES = {
   similar: similarGroups
 };
 let listMode = store.get(KEY_LIST_MODE, 'number');
-if (!(listMode in LIST_MODES)) listMode = 'number';
+if (!Object.hasOwn(LIST_MODES, listMode)) listMode = 'number'; // in 은 'toString' 같은 기본 속성 이름도 통과시킨다
 $('listModes').addEventListener('click', (e) => {
   const mode = e.target.closest('[data-list-mode]')?.dataset.listMode;
   if (!mode || mode === listMode) return;
@@ -625,7 +630,11 @@ function renderMissedSheet() {
       : '아직 틀린 곡이 없어요. 문제를 틀리면 여기에 모여요.'),
     ...songs.map((s) => {
       const r = record[s.id];
-      const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), thumb(s), songText(s));
+      // 마지막 오답이 있으면 정답 줄에 못 맞힌 글자 · 띄어쓰기를 표시한다(빠뜨린 글자나 붙여 쓴 자리는 내 답 쪽에 표시가 없다)
+      const text = !r.last ? songText(s) : h('div', { className: 'song-text' },
+        h('div', { className: 'song-meta' }, answerSpan(s.meta, r.last.meta, isCorrect(s.meta, r.last.meta))),
+        h('div', { className: 'song-title' }, answerSpan(s.title, r.last.title, isCorrect(s.title, r.last.title))));
+      const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), thumb(s), text);
       const item = h('div', { className: 'song' }, row);
       if (s.vid) {
         const btn = h('button', { type: 'button', className: 'listen-btn', 'aria-expanded': 'false' }, icon('i-play'), '듣기');
@@ -723,6 +732,7 @@ $('focusStart').addEventListener('click', () => {
 // ── 업데이트 알림: 새 판이면 그 사이 바뀐 것을 한 번 띄운다. 종 버튼은 전체 내역 (내용은 js/version.js) ──
 function showNews(entries, title) {
   $('newsTitle').textContent = title;
+  $('newsAll').hidden = entries.length === CHANGELOG.length; // 일부만 보여 줄 때만 「전체 내역 보기」
   $('newsBody').replaceChildren(...entries.flatMap((c) => [
     h('h3', { className: 'group-head' }, c.v),
     h('ul', { className: 'news-list' }, ...c.lines.map((l) => h('li', {}, l)))
@@ -730,6 +740,7 @@ function showNews(entries, title) {
   openSheet($('newsSheet'));
 }
 $('openNews').addEventListener('click', () => showNews(CHANGELOG, '업데이트 내역'));
+$('newsAll').addEventListener('click', () => { showNews(CHANGELOG, '업데이트 내역'); $('newsBody').scrollTop = 0; });
 
 // ── 열어 둔 탭에서도 새 판 알아채기: 탭으로 돌아올 때와 3분마다 서버의 version.js 를 확인하고, 판이 다르면 알림 막대를 띄운다 ──
 // 풀던 중에 화면이 저절로 바뀌면 안 되므로 새로고침은 누를 때만 한다
@@ -760,6 +771,7 @@ $('updateReload').addEventListener('click', async () => {
   $('updateReload').disabled = true;
   await Promise.all(APP_FILES.map((f) => fetch(f, { cache: 'reload' }).catch(() => {})));
   location.reload();
+  $('updateReload').disabled = false; // 풀던 중이라 떠나기 확인에서 취소한 경우 다시 누를 수 있게
 });
 
 // ── 키보드: 마우스 없이 풀기 ──
@@ -769,9 +781,9 @@ document.addEventListener('keydown', (e) => {
   if (document.querySelector('dialog[open]') || $('quizActive').hidden) return;
   const el = e.target;
   if (e.code === 'Space') {
-    // 버튼 · 슬라이더 위에서는 기본 동작에 맡긴다. 답 칸에서는 비어 있을 때만 — 글자 사이 띄어쓰기는 그대로 입력돼야 한다
+    // 버튼 위에서는 기본 동작에 맡긴다. 답 칸에서는 비어 있을 때만 — 글자 사이 띄어쓰기는 그대로 입력돼야 한다
     // ponytail: 한계 — 답을 치는 중에는 스페이스로 멈출 수 없다(Tab 으로 재생 버튼에 가서 누른다). 필요하면 전용 단축키 추가
-    if (el.matches('button, [role="slider"]') || (el.matches('input') && el.value)) return;
+    if (el.matches('button') || (el.matches('input') && el.value)) return;
     e.preventDefault();
     $('quizPlay').click();
   } else if (e.key === 'Enter' && el === document.body) {

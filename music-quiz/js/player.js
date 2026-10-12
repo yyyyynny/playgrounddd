@@ -337,6 +337,7 @@ export function seek(sec) {
     yt.seekTo(to, true);
     if (wasPaused) { pausing = false; gate = null; yt.pauseVideo(); }
   });
+  emit(); // 멈춘 채 옮겨도 화면의 시각이 따라오게(화면은 재생 중에만 스스로 갱신한다)
 }
 
 export function restart() {

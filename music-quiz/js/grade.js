@@ -118,9 +118,16 @@ export function charDiff(answer, input) {
     const gapA = [], gapB = [];
     for (let i = p[k - 1][0] + 1; i < p[k][0]; i++) if (best.used.has(i)) gapA.push(i);
     for (let i = p[k - 1][1] + 1; i < p[k][1]; i++) gapB.push(i);
-    // 사이에 구분자나 틀린 글자가 끼어 있으면 그쪽이 이미 설명한다
-    if (gapA.some((i) => sa[i] || !ma[i]) || gapB.some((i) => !mb[i])) continue;
+    // 구분자(中)를 '중' 으로 쓴 경우: 구분자 자신이 맞은 글자라 그 둘레 공백은 자유다
+    if (sa[p[k - 1][0]] || sa[p[k][0]]) continue;
+    // 사이에 틀린 글자가 끼어 있으면 그쪽이 이미 설명한다
+    if (gapA.some((i) => !ma[i] && !sa[i]) || gapB.some((i) => !mb[i])) continue;
     const spA = gapA.filter((i) => SPACE.test(a[i])), spB = gapB.filter((i) => SPACE.test(b[i]));
+    if (gapA.some((i) => sa[i])) {
+      // 구분자를 뺀 경우: 그 자리를 띄우기만 하면 된다. 붙여 썼으면(예: 「사계봄」) 그 자리의 공백을 틀림으로 표시한다
+      if (!spB.length) spA.forEach((i) => badA.add(i));
+      continue;
+    }
     if (spA.length && !spB.length) spA.forEach((i) => badA.add(i));
     if (spB.length && !spA.length) spB.forEach((i) => badB.add(i));
   }

@@ -79,12 +79,12 @@
         <div class="answer-bar">
           <label class="field field-meta">
             <span class="sr-only">작곡가·시대</span>
-            <input id="inMeta" type="text" placeholder="작곡가" enterkeyhint="next" autocapitalize="off" spellcheck="false">
+            <input id="inMeta" type="text" placeholder="작곡가" enterkeyhint="next" autocapitalize="off" autocorrect="off" spellcheck="false">
           </label>
           <span class="answer-divider" aria-hidden="true"></span>
           <label class="field field-title">
             <span class="sr-only">작품명</span>
-            <input id="inTitle" type="text" placeholder="작품명" enterkeyhint="done" autocapitalize="off" spellcheck="false">
+            <input id="inTitle" type="text" placeholder="작품명" enterkeyhint="done" autocapitalize="off" autocorrect="off" spellcheck="false">
           </label>
           <button class="submit-btn" id="submitBtn" type="submit" aria-label="제출"><span class="submit-label" id="nextLabel" aria-hidden="true">다음 문제</span><svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
         </div>
@@ -147,6 +147,9 @@
     <button class="icon-btn" type="button" data-close aria-label="닫기"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
   </div>
   <div class="sheet-body" id="newsBody"></div>
+  <div class="sheet-foot" id="newsFoot">
+    <button class="text-btn" id="newsAll" type="button" hidden>전체 내역 보기</button>
+  </div>
 </dialog>
 
 <dialog class="sheet" id="focusSheet" aria-labelledby="focusTitle">
@@ -166,7 +169,7 @@
 </dialog>
 
 <!-- 이스터에그: 제목 8번 연타 또는 키보드 yyyyynny (js/egg.js) -->
-<dialog class="sheet" id="eggSheet" aria-labelledby="eggTitle" data-locked>
+<dialog class="sheet" id="eggSheet" aria-labelledby="eggTitle" data-locked closedby="none">
   <div class="sheet-head">
     <h2 id="eggTitle"></h2>
     <button class="pill sm" id="eggNext" type="button">다음 곡<svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
