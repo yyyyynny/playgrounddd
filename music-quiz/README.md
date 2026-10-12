@@ -8,6 +8,45 @@
 - 로컬: 저장소 루트에서 `python3 -m http.server 8000` → `http://localhost:8000/music-quiz/`
 - `file://`(파일 더블클릭)로 열지 않는다. 모듈 스크립트와 유튜브 플레이어가 동작하지 않는다.
 
+## 원곡 링크
+
+누르면 유튜브에서 퀴즈와 같은 시작 초로 열린다. `js/songs.js` 의 `vid` · `start` 에서 만든 표라 곡을 바꾸면 이 표도 함께 고친다.
+
+| 번호 | 작곡가 · 시대 | 작품명 | 원곡 |
+|---|---|---|---|
+| 1 | 중세시대 | 성요한 찬가 | [듣기](https://youtu.be/3iR3bJKk1Xc) |
+| 2 | 르네상스 시대(조스캥 데프레) | 아베마리아 | [듣기](https://youtu.be/FNbIyFlvxlk?t=3) |
+| 3 | 비발디 | 사계 中 봄 1악장 | [듣기](https://youtu.be/ZcvufxsthGs?t=10) |
+| 4 | 바흐 | 토카타와 푸가 라단조 | [듣기](https://youtu.be/Nnuq9PXbywA) |
+| 5 | 헨델 | 오라토리오 ‘메시아’ 중 ‘할렐루야’ | [듣기](https://youtu.be/u6_nJ11BgTE?t=2) |
+| 6 | 하이든 | 트럼펫 협주곡 3악장 | [듣기](https://youtu.be/58vkAIlm8z0) |
+| 7 | 모차르트 | 레퀴엠 중 라크리모사 | [듣기](https://youtu.be/VixAWkjyhx0) |
+| 8 | 모차르트 | 오페라 ‘마술피리’ 中 밤의 여왕의 아리아(지옥의 복수심 내 마음속에 끓어오르고) | [듣기](https://youtu.be/s7vJcUogrEI?t=11) |
+| 9 | 베토벤 | 월광소나타 1악장 | [듣기](https://youtu.be/28lA52yQvwk?t=7) |
+| 10 | 베토벤 | 비창소나타 3악장 | [듣기](https://youtu.be/DNouyWhngck?t=7) |
+| 11 | 베토벤 | 교향곡 5번 운명 | [듣기](https://youtu.be/NWWbA5H5pEs?t=7) |
+| 12 | 로시니 | 오페라 ‘세비야의 이발사’ 中 ‘나는 거리의 만물박사’ | [듣기](https://youtu.be/qovJV2cSr6I?t=18) |
+| 13 | 슈베르트 | 마왕 | [듣기](https://youtu.be/GGelWMD8PtQ) |
+| 14 | 드뷔시 | 달빛 | [듣기](https://youtu.be/97_VJve7UVc) |
+| 15 | 라벨 | 볼레로 | [듣기](https://youtu.be/f4iMjjnXbT4) |
+| 16 | 쇼팽 | 왈츠 7번 op.64 no.2 | [듣기](https://youtu.be/cSmU9qu-tKM) |
+| 17 | 쇼팽 | 에튀드 op.25 no.11 ‘겨울바람’ | [듣기](https://youtu.be/60Upg8Hz0rI) |
+| 18 | 리스트 | 대연습곡 S.141. no.3 ‘라캄파넬라’ | [듣기](https://youtu.be/Hf2MFBz4S_g) |
+| 19 | 슈트라우스 | 차라투스트라는 이렇게 말했다. | [듣기](https://youtu.be/o-lzzuEVSMY) |
+| 20 | 슈톡하우젠 | 습작2 | [듣기](https://youtu.be/y5Kh6c8GMCA?t=6) |
+| 21 | 비제 | 카르멘 서곡 | [듣기](https://youtu.be/WRddSpJjx40) |
+| 22 | 존 캔더(존 칸더) | 뉴욕뉴욕 | [듣기](https://youtu.be/LOFxFNV5DBQ?t=12) |
+| 23 | 키무라 유미 | 언제나 몇 번이라도 | [듣기](https://youtu.be/mHZU4O_r6R8) |
+| 24 | 하지영 | 여행을 떠나요 | [듣기](https://youtu.be/muSCAQpiebs) |
+| 25 | 에릭 사티 | 짐노페디 1번 | [듣기](https://youtu.be/M9XPfymOx3Q) |
+| 26 | 쇼스타코비치 | 재즈모음곡 중 왈츠 2번 | [듣기](https://youtu.be/gYSRrer6iO8) |
+| 27 | 존 케이지 | 4:33(4분 33초) | 링크 없음 |
+| 28 | 쇤베르크 | 달에 홀린 피에로 8번 밤 | [듣기](https://youtu.be/Y2-1H9yhU2A) |
+| 29 | 로시니 | 오페라 ‘세비야의 이발사’ 中 ‘방금 들린 그대 음성’ | [듣기](https://youtu.be/pqwnxEf-2KY?t=108) |
+| 30 | 모차르트 | 오페라 ‘피가로의 결혼’ 中 ‘더 이상 날지 못하리 나비야’ | [듣기](https://youtu.be/MXXzaogIn_I?t=2) |
+| 31 | 모차르트 | 오페라 ‘피가로의 결혼’ 中 ‘편지 이중창’ | [듣기](https://youtu.be/un7tf_iCGPA) |
+| 32 | 이병우 | 영화 장화홍련 中 돌이킬 수 없는 걸음 | [듣기](https://youtu.be/oeLHy3dIiXs) |
+
 ## 채점
 
 전체 일치만 정답. 공백 · 따옴표 · 가운뎃점 · 온점 · 쉼표 · 대소문자는 무시하고, `中` 자리는 '중' 으로 쓰거나(붙여 써도 됨) 생략해도 된다. `X(Y)` 는 X 대신 Y 로 써도 정답(예: 「르네상스 시대(조스캥 데프레)」 → 「조스캥 데프레」). 결과는 입력 순서대로 「작곡가 – 작품명」 한 줄로 보여 주고, 틀린 글자만 빨강으로 칠한다(`js/grade.js`).
