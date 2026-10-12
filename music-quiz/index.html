@@ -159,10 +159,14 @@
 <dialog class="sheet" id="eggSheet" aria-labelledby="eggTitle" data-locked>
   <div class="sheet-head">
     <h2 id="eggTitle"></h2>
-    <button class="pill sm" id="eggNext" type="button"><svg aria-hidden="true"><use href="#i-shuffle"/></svg>다른 곡</button>
+    <button class="pill sm" id="eggNext" type="button">다음 곡<svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
     <button class="icon-btn" type="button" data-close aria-label="닫기"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
   </div>
-  <div class="sheet-body"><div class="egg-video"><div id="eggYt"></div></div></div>
+  <div class="sheet-body">
+    <div class="egg-video"><div id="eggYt"></div></div>
+    <button class="egg-bar" id="eggListBtn" type="button" aria-expanded="false" aria-controls="eggList"><span>목록</span><span id="eggCount"></span><svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
+    <div class="egg-list" id="eggList" inert><ol></ol></div>
+  </div>
 </dialog>
 
 <!-- 숨긴 유튜브 플레이어: 화면 밖에 두어 영상·썸네일·제목이 절대 보이지 않게 한다 -->
