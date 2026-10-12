@@ -206,6 +206,7 @@ function closeImg() {
     imgBig.removeEventListener('transitionend', onEnd);
     imgFrom.style.visibility = '';
     imgView.close();
+    if (imgFrom === $('cover')) submitBtn.focus({ preventScroll: true }); // 엔터가 그림을 다시 열지 않고 다음 문제로 가게
   };
   const onEnd = (e) => { if (e.propertyName === 'transform') done(); };
   imgBig.addEventListener('transitionend', onEnd);
@@ -218,7 +219,8 @@ $('quizFwd').addEventListener('click', () => {
   player.seek((player.time().current || quizDeck.song.start) + 10);
 });
 
-let selection = new Set((store.get(KEY_SELECTION, null) || []).filter((id) => byId.has(id)));
+const savedSelection = store.get(KEY_SELECTION, null);
+let selection = new Set((Array.isArray(savedSelection) ? savedSelection : []).filter((id) => byId.has(id))); // 깨진 저장값이면 전체 곡으로
 if (!selection.size) selection = new Set(ALL_IDS);
 
 // missed: 이번 라운드에서 틀린 곡 · review: 틀린 곡만 다시 푸는 중 · pool: 이번 라운드의 곡 전체(다시 섞기용)
@@ -559,7 +561,7 @@ const LIST_MODES = {
   similar: similarGroups
 };
 let listMode = store.get(KEY_LIST_MODE, 'number');
-if (!(listMode in LIST_MODES)) listMode = 'number';
+if (!Object.hasOwn(LIST_MODES, listMode)) listMode = 'number'; // in 은 'toString' 같은 기본 속성 이름도 통과시킨다
 $('listModes').addEventListener('click', (e) => {
   const mode = e.target.closest('[data-list-mode]')?.dataset.listMode;
   if (!mode || mode === listMode) return;
@@ -628,7 +630,11 @@ function renderMissedSheet() {
       : '아직 틀린 곡이 없어요. 문제를 틀리면 여기에 모여요.'),
     ...songs.map((s) => {
       const r = record[s.id];
-      const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), thumb(s), songText(s));
+      // 마지막 오답이 있으면 정답 줄에 못 맞힌 글자 · 띄어쓰기를 표시한다(빠뜨린 글자나 붙여 쓴 자리는 내 답 쪽에 표시가 없다)
+      const text = !r.last ? songText(s) : h('div', { className: 'song-text' },
+        h('div', { className: 'song-meta' }, answerSpan(s.meta, r.last.meta, isCorrect(s.meta, r.last.meta))),
+        h('div', { className: 'song-title' }, answerSpan(s.title, r.last.title, isCorrect(s.title, r.last.title))));
+      const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), thumb(s), text);
       const item = h('div', { className: 'song' }, row);
       if (s.vid) {
         const btn = h('button', { type: 'button', className: 'listen-btn', 'aria-expanded': 'false' }, icon('i-play'), '듣기');
@@ -775,9 +781,9 @@ document.addEventListener('keydown', (e) => {
   if (document.querySelector('dialog[open]') || $('quizActive').hidden) return;
   const el = e.target;
   if (e.code === 'Space') {
-    // 버튼 · 슬라이더 위에서는 기본 동작에 맡긴다. 답 칸에서는 비어 있을 때만 — 글자 사이 띄어쓰기는 그대로 입력돼야 한다
+    // 버튼 위에서는 기본 동작에 맡긴다. 답 칸에서는 비어 있을 때만 — 글자 사이 띄어쓰기는 그대로 입력돼야 한다
     // ponytail: 한계 — 답을 치는 중에는 스페이스로 멈출 수 없다(Tab 으로 재생 버튼에 가서 누른다). 필요하면 전용 단축키 추가
-    if (el.matches('button, [role="slider"]') || (el.matches('input') && el.value)) return;
+    if (el.matches('button') || (el.matches('input') && el.value)) return;
     e.preventDefault();
     $('quizPlay').click();
   } else if (e.key === 'Enter' && el === document.body) {
