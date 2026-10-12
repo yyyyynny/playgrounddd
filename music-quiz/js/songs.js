@@ -72,12 +72,6 @@ export function voiceGroups() {
   ];
 }
 
-// 틀린 곡 묶음 — misses: { 곡 번호: 틀린 횟수 }. 많이 틀린 순(같으면 번호순). 기록이 없으면 빈 배열
-export function missedGroups(misses) {
-  const songs = SONGS.filter((s) => misses[s.id] > 0).sort((a, b) => misses[b.id] - misses[a.id]);
-  return songs.length ? [{ label: `틀린 곡 · ${songs.length}곡`, songs }] : [];
-}
-
 // 저장해 둔 틀린 기록을 믿을 수 있는 값만 남겨 되살린다 — 깨졌거나 다른 모양이면 빈 기록으로 시작(오류를 내지 않는다)
 export function cleanMisses(raw) {
   const out = {};

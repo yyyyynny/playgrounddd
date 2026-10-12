@@ -400,6 +400,7 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 .no-link { flex: none; font-size: .76rem; color: var(--muted); }
 .list-empty { color: var(--muted); font-size: .9rem; text-align: center; margin: 28px 0; }
 #listModes { flex-wrap: wrap; }
+#listMissedOnly { margin-left: auto; }
 .list-hint { color: var(--muted); font-size: .78rem; line-height: 1.5; margin: 6px 0 0; }
 .inline-player {
   display: flex; align-items: center; gap: 10px;

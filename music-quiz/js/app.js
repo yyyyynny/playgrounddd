@@ -1,5 +1,5 @@
 // 음악 감상 퀴즈 — 화면 상태와 이벤트
-import { SONGS, GROUPS, GAIN_ON, composerGroups, voiceGroups, missedGroups, cleanMisses } from './songs.js';
+import { SONGS, GROUPS, GAIN_ON, composerGroups, voiceGroups, cleanMisses } from './songs.js';
 import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
@@ -481,8 +481,7 @@ function toggleInline(song, item, btn) {
 const LIST_MODES = {
   number: () => GROUPS.map((x) => ({ label: x.label, songs: songsOf(x) })),
   composer: composerGroups,
-  voice: voiceGroups,
-  missed: () => missedGroups(misses)
+  voice: voiceGroups
 };
 let listMode = store.get(KEY_LIST_MODE, 'number');
 if (!(listMode in LIST_MODES)) listMode = 'number';
@@ -494,24 +493,35 @@ $('listModes').addEventListener('click', (e) => {
   player.pause();
   renderList();
 });
+// 「틀린 곡만」: 묶는 방식과 따로 켜고 끄는 거르개. 켜면 어느 보기에서든 틀린 기록이 있는 곡만 남는다(켠 상태는 기억하지 않는다)
+let missedOnly = false;
+$('listMissedOnly').addEventListener('click', () => {
+  missedOnly = !missedOnly;
+  player.pause();
+  renderList();
+});
 
 function renderList() {
   closeInline();
   const body = $('listBody');
   body.replaceChildren();
-  for (const b of $('listModes').children) {
+  $('listMissedOnly').setAttribute('aria-pressed', String(missedOnly));
+  $('listMissedOnly').classList.toggle('is-on', missedOnly);
+  for (const b of $('listModes').querySelectorAll('[data-list-mode]')) {
     const on = b.dataset.listMode === listMode;
     b.setAttribute('aria-pressed', String(on));
     b.classList.toggle('is-on', on);
   }
-  const groups = LIST_MODES[listMode]();
+  let groups = LIST_MODES[listMode]();
+  // 거른 뒤에는 묶음 제목의 곡 수(「· 13곡」)가 맞지 않으므로 뗀다
+  if (missedOnly) groups = groups.map((g) => ({ label: g.label.replace(/ · \d+곡$/, ''), songs: g.songs.filter((s) => misses[s.id]) })).filter((g) => g.songs.length);
   if (!groups.length) body.append(h('p', { className: 'list-empty' }, '아직 틀린 곡이 없어요. 틀린 곡은 맞힐 때까지 여기에 모여요.'));
-  else if (listMode === 'missed') body.append(h('p', { className: 'list-hint' }, '틀릴 때마다 숫자가 늘고, 한 번 맞히면 여기서 빠져요. 숫자는 마지막으로 맞힌 뒤 연달아 틀린 횟수예요.'));
+  else if (missedOnly) body.append(h('p', { className: 'list-hint' }, '틀린 곡만 보여요. 맞히면 여기서 빠져요.'));
   for (const g of groups) {
     body.append(h('h3', { className: 'group-head' }, g.label));
     for (const s of g.songs) {
       const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), songText(s));
-      if (listMode === 'missed') row.append(h('span', { className: 'no-link' }, `${misses[s.id]}번 틀림`));
+      if (missedOnly) row.append(h('span', { className: 'no-link' }, `${misses[s.id]}번 틀림`));
       const item = h('div', { className: 'song' }, row);
       if (s.vid) {
         const btn = h('button', { type: 'button', className: 'listen-btn', 'aria-expanded': 'false' }, icon('i-play'), '듣기');
