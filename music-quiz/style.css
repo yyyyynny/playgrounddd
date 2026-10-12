@@ -148,7 +148,7 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   .icon-btn:active, .icon-btn.is-pressed { transform: none; }
 }
 
-.nav { display: flex; gap: 8px; margin-bottom: 14px; }
+.nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
   border: 1px solid var(--line); background: var(--surface); color: var(--ink);
@@ -400,7 +400,13 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 .no-link { flex: none; font-size: .76rem; color: var(--muted); }
 .list-empty { color: var(--muted); font-size: .9rem; text-align: center; margin: 28px 0; }
 #listModes { flex-wrap: wrap; }
-#listMissedOnly { margin-left: auto; }
+/* 틀린 곡 창 */
+.miss-stat { margin: -4px 0 8px 34px; font-size: .78rem; color: var(--muted); }
+.miss-stat strong { color: var(--bad); font-weight: 700; }
+#missedSheet .song-row .icon-btn { flex: none; }
+#missedFoot { display: grid; justify-items: center; gap: 2px; }
+#missedFoot[hidden] { display: none; }
+#missedFoot .primary-btn { width: 100%; }
 .list-hint { color: var(--muted); font-size: .78rem; line-height: 1.5; margin: 6px 0 0; }
 .inline-player {
   display: flex; align-items: center; gap: 10px;

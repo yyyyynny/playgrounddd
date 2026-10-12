@@ -47,6 +47,7 @@
   <nav class="nav" aria-label="보기">
     <button class="pill" id="openList" type="button"><svg aria-hidden="true"><use href="#i-list"/></svg>전체 목록</button>
     <span class="pill-group"><button class="pill" id="openFocus" type="button"><svg aria-hidden="true"><use href="#i-target"/></svg><span id="focusLabel">집중 학습</span></button><button class="pill pill-x" id="clearFocus" type="button" aria-label="집중 학습 끄고 전체 곡으로" hidden><svg aria-hidden="true"><use href="#i-close"/></svg></button></span>
+    <button class="pill" id="openMissed" type="button"><svg aria-hidden="true"><use href="#i-x"/></svg><span id="missedLabel">틀린 곡</span></button>
   </nav>
 
   <main class="card" id="quiz">
@@ -114,9 +115,20 @@
     <button class="pill sm" type="button" data-list-mode="number">번호순</button>
     <button class="pill sm" type="button" data-list-mode="composer">작곡가</button>
     <button class="pill sm" type="button" data-list-mode="voice">노래·연주</button>
-    <button class="pill sm" id="listMissedOnly" type="button" aria-pressed="false">틀린 곡만</button>
   </div>
   <div class="sheet-body" id="listBody"></div>
+</dialog>
+
+<dialog class="sheet" id="missedSheet" aria-labelledby="missedTitle">
+  <div class="sheet-head" title="끌어 내려 닫기">
+    <h2 id="missedTitle">틀린 곡</h2>
+    <button class="icon-btn" type="button" data-close aria-label="닫기"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+  </div>
+  <div class="sheet-body" id="missedBody"></div>
+  <div class="sheet-foot" id="missedFoot">
+    <button class="primary-btn" id="missedStart" type="button">이 곡들로 풀기</button>
+    <button class="text-btn" id="missedClear" type="button">기록 모두 지우기</button>
+  </div>
 </dialog>
 
 <dialog class="sheet" id="newsSheet" aria-labelledby="newsTitle">

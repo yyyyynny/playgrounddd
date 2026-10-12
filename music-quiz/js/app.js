@@ -1,5 +1,5 @@
 // 음악 감상 퀴즈 — 화면 상태와 이벤트
-import { SONGS, GROUPS, GAIN_ON, composerGroups, voiceGroups, cleanMisses } from './songs.js';
+import { SONGS, GROUPS, GAIN_ON, composerGroups, voiceGroups, applyAnswer, cleanRecord, missedSongs } from './songs.js';
 import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
@@ -45,7 +45,7 @@ const store = {
 const KEY_SELECTION = 'music-quiz:selection';
 const KEY_THEME = 'music-quiz:theme';
 const KEY_LIST_MODE = 'music-quiz:list-mode';
-const KEY_MISSES = 'music-quiz:misses';
+const KEY_RECORD = 'music-quiz:record';
 const KEY_SEEN = 'music-quiz:seen-version';
 
 // ── 테마 (기본 라이트) ──
@@ -168,9 +168,14 @@ let selection = new Set((store.get(KEY_SELECTION, null) || []).filter((id) => by
 if (!selection.size) selection = new Set(ALL_IDS);
 
 // missed: 이번 라운드에서 틀린 곡 · review: 틀린 곡만 다시 푸는 중 · pool: 이번 라운드의 곡 전체(다시 섞기용)
-// 틀린 기록 { 곡 번호: 틀린 횟수 } — 틀리면 늘고 맞히면 지워진다. 전체 목록의 「틀린 곡」에 쓴다
-// 라운드를 다시 시작해도, 새로고침해도 남게 브라우저에 저장한다. 저장이 지워지거나 깨지면 빈 기록으로 조용히 시작한다(cleanMisses)
-const misses = cleanMisses(store.get(KEY_MISSES, null));
+// 틀린 기록(곡마다 갚을 횟수 · 틀린/푼 횟수 · 마지막 오답, 모양은 songs.js) — 「틀린 곡」 창에 쓴다
+// 라운드를 다시 시작해도, 새로고침해도 남게 브라우저에 저장한다. 저장이 지워지거나 깨지면 빈 기록으로 조용히 시작한다(cleanRecord)
+const record = cleanRecord(store.get(KEY_RECORD, null));
+function saveRecord() {
+  store.set(KEY_RECORD, record);
+  const n = missedSongs(record).length;
+  $('missedLabel').textContent = n ? `틀린 곡 · ${n}` : '틀린 곡';
+}
 // answers: 이번 라운드에서 낸 답(틀린 내역 표시용). 라운드 안에서만 기억한다 — 새로고침하면 라운드가 새로 시작되므로 저장하지 않는다
 const quiz = { queue: [], idx: 0, answered: false, correct: 0, tried: 0, missed: new Set(), answers: new Map(), review: false, pool: [] };
 const form = $('answerForm');
@@ -310,8 +315,8 @@ function submit() {
   quiz.tried++;
   if (ok) quiz.correct++; else quiz.missed.add(song.id);
   quiz.answers.set(song.id, { meta, title, metaOk, titleOk });
-  if (ok) delete misses[song.id]; else misses[song.id] = (misses[song.id] || 0) + 1;
-  store.set(KEY_MISSES, misses);
+  record[song.id] = applyAnswer(record[song.id], ok, meta, title);
+  saveRecord();
   setAnswered(true);
   try { navigator.vibrate?.(ok ? 12 : [14, 60, 14]); } catch { /* 진동 미지원 */ }
 
@@ -493,35 +498,21 @@ $('listModes').addEventListener('click', (e) => {
   player.pause();
   renderList();
 });
-// 「틀린 곡만」: 묶는 방식과 따로 켜고 끄는 거르개. 켜면 어느 보기에서든 틀린 기록이 있는 곡만 남는다(켠 상태는 기억하지 않는다)
-let missedOnly = false;
-$('listMissedOnly').addEventListener('click', () => {
-  missedOnly = !missedOnly;
-  player.pause();
-  renderList();
-});
 
 function renderList() {
   closeInline();
   const body = $('listBody');
   body.replaceChildren();
-  $('listMissedOnly').setAttribute('aria-pressed', String(missedOnly));
-  $('listMissedOnly').classList.toggle('is-on', missedOnly);
   for (const b of $('listModes').querySelectorAll('[data-list-mode]')) {
     const on = b.dataset.listMode === listMode;
     b.setAttribute('aria-pressed', String(on));
     b.classList.toggle('is-on', on);
   }
-  let groups = LIST_MODES[listMode]();
-  // 거른 뒤에는 묶음 제목의 곡 수(「· 13곡」)가 맞지 않으므로 뗀다
-  if (missedOnly) groups = groups.map((g) => ({ label: g.label.replace(/ · \d+곡$/, ''), songs: g.songs.filter((s) => misses[s.id]) })).filter((g) => g.songs.length);
-  if (!groups.length) body.append(h('p', { className: 'list-empty' }, '아직 틀린 곡이 없어요. 틀린 곡은 맞힐 때까지 여기에 모여요.'));
-  else if (missedOnly) body.append(h('p', { className: 'list-hint' }, '틀린 곡만 보여요. 맞히면 여기서 빠져요.'));
+  const groups = LIST_MODES[listMode]();
   for (const g of groups) {
     body.append(h('h3', { className: 'group-head' }, g.label));
     for (const s of g.songs) {
       const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), songText(s));
-      if (missedOnly) row.append(h('span', { className: 'no-link' }, `${misses[s.id]}번 틀림`));
       const item = h('div', { className: 'song' }, row);
       if (s.vid) {
         const btn = h('button', { type: 'button', className: 'listen-btn', 'aria-expanded': 'false' }, icon('i-play'), '듣기');
@@ -545,6 +536,59 @@ listSheet.addEventListener('close', () => {
   player.pause();
   // ponytail: 한계 — 목록에서 다른 곡을 들었다면 퀴즈 곡은 시작점부터 다시 준비된다. 위치 유지가 필요하면 load 전에 time() 을 저장해 두었다가 seek
   attach(quizDeck);
+});
+
+// ── 틀린 곡: 갚을 횟수가 남은 곡을 모아 보고, 다시 듣고, 그 곡들로만 풀 수 있다 ──
+const missedSheet = $('missedSheet');
+function renderMissedSheet() {
+  closeInline();
+  const songs = missedSongs(record);
+  $('missedFoot').hidden = songs.length === 0;
+  $('missedBody').replaceChildren(
+    h('p', { className: songs.length ? 'list-hint' : 'list-empty' }, songs.length
+      ? '틀리면 남은 횟수가 1 늘고, 맞히면 1 줄어요. 0이 되면 여기서 빠져요.'
+      : '아직 틀린 곡이 없어요. 문제를 틀리면 여기에 모여요.'),
+    ...songs.map((s) => {
+      const r = record[s.id];
+      const row = h('div', { className: 'song-row' }, h('span', { className: 'song-num' }, `${s.id}.`), songText(s));
+      const item = h('div', { className: 'song' }, row);
+      if (s.vid) {
+        const btn = h('button', { type: 'button', className: 'listen-btn', 'aria-expanded': 'false' }, icon('i-play'), '듣기');
+        btn.addEventListener('click', () => toggleInline(s, item, btn));
+        row.append(btn);
+      }
+      const del = h('button', { type: 'button', className: 'icon-btn', 'aria-label': `${s.title} 기록 지우기` }, icon('i-close'));
+      del.addEventListener('click', () => { delete record[s.id]; saveRecord(); player.pause(); renderMissedSheet(); });
+      row.append(del);
+      item.append(h('p', { className: 'miss-stat' }, h('strong', {}, `${r.debt}번 남음`), ` · ${r.tried}번 중 ${r.wrong}번 틀림`));
+      if (r.last) {
+        const metaOk = isCorrect(s.meta, r.last.meta), titleOk = isCorrect(s.title, r.last.title);
+        item.append(h('details', { className: 'mine' }, h('summary', {}, '마지막으로 쓴 오답'),
+          h('p', {}, mineSpan(s.meta, r.last.meta, metaOk), sep(), mineSpan(s.title, r.last.title, titleOk))));
+      }
+      return item;
+    }));
+}
+$('openMissed').addEventListener('click', () => {
+  player.pause();
+  renderMissedSheet();
+  openSheet(missedSheet);
+});
+missedSheet.addEventListener('close', () => {
+  closeInline();
+  player.pause();
+  attach(quizDeck);
+});
+$('missedStart').addEventListener('click', () => {
+  const ids = missedSongs(record).map((s) => s.id);
+  closeSheet(missedSheet);
+  newRound(ids);
+});
+$('missedClear').addEventListener('click', () => {
+  if (!confirm('틀린 기록을 모두 지울까요? 되돌릴 수 없어요.')) return;
+  for (const id of Object.keys(record)) delete record[id];
+  saveRecord();
+  renderMissedSheet();
 });
 
 // ── 집중 학습 ──
@@ -667,6 +711,7 @@ function trackViewport() {
 }
 
 // ── 시작 ──
+saveRecord(); // 틀린 곡 수 표시
 trackViewport();
 renderList();
 updateFocusLabel();

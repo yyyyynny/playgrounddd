@@ -72,10 +72,32 @@ export function voiceGroups() {
   ];
 }
 
-// 저장해 둔 틀린 기록을 믿을 수 있는 값만 남겨 되살린다 — 깨졌거나 다른 모양이면 빈 기록으로 시작(오류를 내지 않는다)
-export function cleanMisses(raw) {
+// ── 틀린 기록 ── 곡마다 { debt, wrong, tried, last }
+// debt: 아직 갚을 횟수 — 틀리면 +1, 맞히면 -1. 0 보다 크면 「틀린 곡」에 나온다(2번 틀렸으면 2번 맞혀야 빠진다)
+// wrong / tried: 지금까지 틀린 횟수 / 푼 횟수.  last: 마지막으로 틀렸을 때 쓴 답 { meta, title }
+const count = (v) => (Number.isInteger(v) && v > 0 ? v : 0);
+
+// 답 하나를 기록에 반영한 새 항목을 돌려준다
+export function applyAnswer(rec, ok, meta, title) {
+  const r = rec || { debt: 0, wrong: 0, tried: 0 };
+  return ok
+    ? { ...r, tried: r.tried + 1, debt: Math.max(0, r.debt - 1) }
+    : { debt: r.debt + 1, wrong: r.wrong + 1, tried: r.tried + 1, last: { meta, title } };
+}
+
+// 저장해 둔 기록을 믿을 수 있는 값만 남겨 되살린다 — 깨졌거나 다른 모양이면 그 곡(또는 전체)을 빈 기록으로(오류를 내지 않는다)
+export function cleanRecord(raw) {
   const out = {};
   if (!raw || typeof raw !== 'object') return out;
-  for (const s of SONGS) if (Number.isInteger(raw[s.id]) && raw[s.id] > 0) out[s.id] = raw[s.id];
+  for (const s of SONGS) {
+    const r = raw[s.id];
+    if (!r || typeof r !== 'object' || !count(r.tried)) continue;
+    const wrong = Math.min(count(r.wrong), r.tried);
+    out[s.id] = { debt: Math.min(count(r.debt), wrong), wrong, tried: r.tried };
+    if (typeof r.last?.meta === 'string' && typeof r.last?.title === 'string') out[s.id].last = { meta: r.last.meta, title: r.last.title };
+  }
   return out;
 }
+
+// 「틀린 곡」에 나올 곡 — 갚을 횟수가 많은 순(같으면 번호순)
+export const missedSongs = (record) => SONGS.filter((s) => record[s.id]?.debt > 0).sort((a, b) => record[b.id].debt - record[a.id].debt);

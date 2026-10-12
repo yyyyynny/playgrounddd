@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, statSync } from 'node:fs';
-import { SONGS, GAIN_ON, composerGroups, voiceGroups, cleanMisses } from '../js/songs.js';
+import { SONGS, GAIN_ON, composerGroups, voiceGroups, applyAnswer, cleanRecord, missedSongs } from '../js/songs.js';
 
 test('곡 번호는 1~32 가 겹치지 않고 모두 있다', () => {
   assert.deepEqual(SONGS.map((s) => s.id), Array.from({ length: 32 }, (_, i) => i + 1));
@@ -48,7 +48,20 @@ test('노래/연주: 32곡이 한 번씩만 들어가고, 영상 없는 곡은 �
   assert.ok(sung.songs.some((s) => s.id === 13) && played.songs.some((s) => s.id === 9)); // 마왕은 노래, 월광은 연주
 });
 
+test('틀린 기록: 틀리면 갚을 횟수가 늘고 맞힐 때마다 1씩 준다, 횟수와 마지막 오답이 남는다', () => {
+  let r = applyAnswer(undefined, false, '슈만', '마왕');
+  r = applyAnswer(r, false, '슈벨트', '마왕');
+  assert.deepEqual(r, { debt: 2, wrong: 2, tried: 2, last: { meta: '슈벨트', title: '마왕' } });
+  r = applyAnswer(r, true, '슈베르트', '마왕');
+  assert.deepEqual([r.debt, r.wrong, r.tried, r.last.meta], [1, 2, 3, '슈벨트']); // 한 번 맞혀도 아직 남는다
+  r = applyAnswer(applyAnswer(r, true), true);
+  assert.deepEqual([r.debt, r.wrong, r.tried], [0, 2, 5]);                          // 0 아래로는 안 내려간다
+  assert.deepEqual(missedSongs({ 3: { debt: 1 }, 9: { debt: 3 }, 13: { debt: 0 } }).map((s) => s.id), [9, 3]);
+});
+
 test('틀린 기록: 깨진 저장값은 버린다', () => {
-  assert.deepEqual(cleanMisses({ 9: 2, 13: -1, 99: 5, 3: 'x', 8: 1.5 }), { 9: 2 });
-  for (const bad of [null, undefined, 'abc', 7, []]) assert.deepEqual(cleanMisses(bad), {});
+  const ok = { debt: 1, wrong: 2, tried: 3, last: { meta: 'a', title: 'b' } };
+  assert.deepEqual(cleanRecord({ 9: ok, 99: ok, 13: { debt: -1, wrong: 'x', tried: 2 }, 3: 5, 8: { debt: 9, wrong: 1, tried: 1, last: 7 } }),
+    { 9: ok, 13: { debt: 0, wrong: 0, tried: 2 }, 8: { debt: 1, wrong: 1, tried: 1 } });
+  for (const bad of [null, undefined, 'abc', 7, []]) assert.deepEqual(cleanRecord(bad), {});
 });
