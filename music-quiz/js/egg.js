@@ -1,6 +1,6 @@
 // 이스터에그 — 키보드로 yyyyynny 를 치거나 제목을 연달아 5번 누르면 열린다. 관리자님이 좋아하는 노래를 영상과 함께 무작위 재생
 // 곡 목록 [{ v: 영상 ID, s: 시작 초, t: 표시 이름 }] 은 한눈에 읽히지 않게 섞어 둔다(JSON → base64 → 뒤집기). 비밀 보장은 아니다
-const LIST = '==QX9JCs4qOuwyOvsuOiIuOITCo4gIVRXFlI6ICdiwSM1ojIzJCLiUkbzcGR0gXZ5VWYiojI2Jyes0nIkS46sa66su46gQYnsTIsqz5isDykAKOIcG66cG66cWZ7iojI0JCLzYjOiMnIsIyahN2NjRlehRDcMJiOiYnI7xSfigJsrzbnsjKsszLltDykAKOIoyJ7M2J7iojI0JCLwojIzJCLic2d6pFSXhkT3onWiojI2Jyes0nIlNXdvhEIyV3bZBCdhBSehR3Ug8GdgQnbhdFI5xGbhVmUgkEITCo4gUURCpVQEJiOiQnIsUzNxojIzJCLiUUZON0UB5EMN5ENiojI2Jyes0nIACr6sCL7Me66gMJgiDiLptWd0JiOiQnIsIDN6IyciwiIJVTd2NWRFlFca9mI6IidisHL9JCpKyOsayOs4qOlF2OoyuOITCo4gwqprDrmsDKnsLiOiQnIsIDN6IyciwiIwQDZvR3SpB3d2dmI6Iidis3W';
+const LIST = '=0VfiALuqjLsszLrrjIirDykAKOISV0VRJiOiQnIsYTMxojIzJCLigTZSFDSKljemlGciojI2Jyes0nIkS46sa66su46gQYnsTIsqz5isDykAKOIcG66cG66cWZ7iojI0JCLzYjOiMnIsIyahN2NjRlehRDcMJiOiYnI7xSfigJsrzbnsjKsszLltDykAKOIoyJ7M2J7iojI0JCLwojIzJCLic2d6pFSXhkT3onWiojI2Jyes0nIlNXdvhEIyV3bZBCdhBSehR3Ug8GdgQnbhdFI5xGbhVmUgkEITCo4gUURCpVQEJiOiQnIsUzNxojIzJCLiUUZON0UB5EMN5ENiojI2Jyes0nIACr6sCL7Me66gMJgiDiLptWd0JiOiQnIsIDN6IyciwiIJVTd2NWRFlFca9mI6IidisHL9JCpKyOsayOs4qOlF2OoyuOITCo4gwqprDrmsDKnsLiOiQnIsIDN6IyciwiIRN0aDhkQhtES5QnI6Iidis3W';
 export const eggSongs = () => JSON.parse(new TextDecoder().decode(
   Uint8Array.from(atob([...LIST].reverse().join('')), (c) => c.charCodeAt(0))));
 
