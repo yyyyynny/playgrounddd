@@ -4,7 +4,7 @@ import { isCorrect, charDiff } from './grade.js';
 import * as player from './player.js';
 import { createWave, formatTime } from './wave.js';
 import { initEgg } from './egg.js';
-import { APP_VERSION, CHANGELOG, changesSince } from './version.js';
+import { APP_VERSION, CHANGELOG, changesSince, versionIn } from './version.js';
 
 const $ = (id) => document.getElementById(id);
 const byId = new Map(SONGS.map((s) => [s.id, s]));
@@ -661,6 +661,36 @@ function showNews(entries, title) {
   openSheet($('newsSheet'));
 }
 $('openNews').addEventListener('click', () => showNews(CHANGELOG, '업데이트 내역'));
+
+// ── 열어 둔 탭에서도 새 판 알아채기: 탭으로 돌아올 때 서버의 version.js 를 확인하고, 판이 다르면 알림 막대를 띄운다 ──
+// 풀던 중에 화면이 저절로 바뀌면 안 되므로 새로고침은 누를 때만 한다
+const VERSION_CHECK_GAP = 60000; // 확인 간격(ms) — 탭을 자주 오가도 요청은 1분에 한 번
+// ponytail: 한계 — 새로고침 전에 다시 받아 둘 파일을 손으로 적어 둔다(브라우저가 옛 파일을 계속 쓰지 않게). 파일을 더하면 여기도 더한다
+const APP_FILES = ['./', 'style.css', 'js/app.js', 'js/songs.js', 'js/grade.js', 'js/player.js', 'js/wave.js', 'js/egg.js', 'js/version.js'];
+let lastVersionCheck = performance.now(); // 막 연 직후에는 확인하지 않는다
+let dismissedVersion = null;
+async function checkNewVersion() {
+  if (document.visibilityState !== 'visible' || performance.now() - lastVersionCheck < VERSION_CHECK_GAP) return;
+  lastVersionCheck = performance.now();
+  try {
+    const latest = versionIn(await (await fetch('js/version.js', { cache: 'no-store' })).text());
+    if (latest && latest !== APP_VERSION && latest !== dismissedVersion) {
+      $('updateBar').dataset.version = latest;
+      $('updateBar').hidden = false;
+    }
+  } catch { /* 오프라인 등 — 다음에 다시 본다 */ }
+}
+document.addEventListener('visibilitychange', checkNewVersion);
+window.addEventListener('focus', checkNewVersion);
+$('updateDismiss').addEventListener('click', () => {
+  dismissedVersion = $('updateBar').dataset.version; // 이 판은 다시 묻지 않는다(더 새 판이 나오면 다시 뜬다)
+  $('updateBar').hidden = true;
+});
+$('updateReload').addEventListener('click', async () => {
+  $('updateReload').disabled = true;
+  await Promise.all(APP_FILES.map((f) => fetch(f, { cache: 'reload' }).catch(() => {})));
+  location.reload();
+});
 
 // ── 키보드: 마우스 없이 풀기 ──
 // 스페이스 = 재생·일시정지, 엔터 = 제출·다음 문제(답 칸 · 버튼 위에서는 브라우저 기본 동작이 이미 그렇게 한다)

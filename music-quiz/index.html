@@ -169,6 +169,13 @@
   </div>
 </dialog>
 
+<!-- 열어 둔 탭에서 새 판이 올라온 것을 알아챘을 때만 뜬다(app.js checkNewVersion). 새로고침은 누를 때만 한다 -->
+<div class="update-bar" id="updateBar" role="status" hidden>
+  <span>새 판이 있어요</span>
+  <button class="pill sm is-on" id="updateReload" type="button">새로고침</button>
+  <button class="icon-btn" id="updateDismiss" type="button" aria-label="알림 닫기"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+</div>
+
 <!-- 숨긴 유튜브 플레이어: 화면 밖에 두어 영상·썸네일·제목이 절대 보이지 않게 한다 -->
 <div class="yt-host" aria-hidden="true"><div id="yt"></div></div>
 </body>

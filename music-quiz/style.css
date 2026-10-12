@@ -403,6 +403,18 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
   .egg-video { width: min(100%, calc((var(--app-h, 100dvh) - 66px) * 16 / 9)); }
 }
 
+/* 새 판 알림 막대 — 화면 아래에 떠 있는 반투명 재질. 흐름을 막지 않게 어둡게 깔지 않는다 */
+.update-bar {
+  position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); translate: -50% 0; z-index: 5;
+  display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 16px; white-space: nowrap;
+  border-radius: var(--r-pill); background: var(--material); color: var(--ink); box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  font-size: .88rem; font-weight: 600;
+  transition: opacity var(--t-mid) var(--ease-out), translate var(--t-mid) var(--ease-spring);
+}
+.update-bar[hidden] { display: none; }
+@starting-style { .update-bar { opacity: 0; translate: -50% 12px; } }
+
 /* 업데이트 내역 */
 .news-list { margin: 0; padding-left: 1.15em; line-height: 1.55; font-size: .92rem; }
 .news-list li + li { margin-top: 6px; }
@@ -466,7 +478,7 @@ body:has(.sheet[open]:not(.is-closing)) .page { transform: scale(.94) translateY
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; }
   .cover::after { animation: none; }
-  .egg-list, .egg-bar svg { transition: none; }
+  .egg-list, .egg-bar svg, .update-bar { transition: none; }
   .sheet, .sheet.is-closing { transform: none !important; transition: opacity 200ms ease; }
   .sheet.is-closing { opacity: 0; }
   @starting-style { .sheet[open] { opacity: 0; } }
