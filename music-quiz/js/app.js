@@ -506,6 +506,7 @@ function renderList() {
   }
   const groups = LIST_MODES[listMode]();
   if (!groups.length) body.append(h('p', { className: 'list-empty' }, '아직 틀린 곡이 없어요. 틀린 곡은 맞힐 때까지 여기에 모여요.'));
+  else if (listMode === 'missed') body.append(h('p', { className: 'list-hint' }, '틀릴 때마다 숫자가 늘고, 한 번 맞히면 여기서 빠져요. 숫자는 마지막으로 맞힌 뒤 연달아 틀린 횟수예요.'));
   for (const g of groups) {
     body.append(h('h3', { className: 'group-head' }, g.label));
     for (const s of g.songs) {
